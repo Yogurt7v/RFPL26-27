@@ -1,0 +1,117 @@
+/* Планшеты (768px+) */
+@media (min-width: 768px) {
+  .layout__content {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: var(--spacing-lg);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--spacing-lg));
+  }
+
+  .match-list__grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-md);
+  }
+
+  .match-card {
+    margin-bottom: 0;
+  }
+
+  .prediction-form__score-input {
+    width: 80px;
+    font-size: var(--font-size-2xl);
+  }
+}
+
+/* Десктоп (1024px+) */
+@media (min-width: 1024px) {
+  .layout__content {
+    max-width: 960px;
+  }
+
+  .match-list__grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .bottom-nav {
+    position: static;
+    height: auto;
+    flex-direction: row;
+    justify-content: center;
+    gap: var(--spacing-lg);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-top: none;
+    border-bottom: 1px solid var(--color-border);
+    box-shadow: none;
+  }
+
+  .bottom-nav__item {
+    flex: none;
+    flex-direction: row;
+    gap: var(--spacing-xs);
+  }
+
+  .layout__content {
+    padding-bottom: var(--spacing-lg);
+  }
+
+  .header__username {
+    font-size: var(--font-size-md);
+  }
+}
+
+/* Большие десктопы (1280px+) */
+@media (min-width: 1280px) {
+  .layout__content {
+    max-width: 1120px;
+  }
+
+  .match-list__grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Маленькие мобильные (< 360px) */
+@media (max-width: 359px) {
+  :root {
+    --font-size-base: 14px;
+    --spacing-md: 12px;
+  }
+
+  .header__logo {
+    font-size: var(--font-size-md);
+  }
+
+  .bottom-nav__label {
+    font-size: 10px;
+  }
+
+  .match-card__logo {
+    width: 24px;
+    height: 24px;
+  }
+
+  .prediction-form__score-input {
+    width: 50px;
+    font-size: var(--font-size-lg);
+  }
+}
+
+/* Горизонтальный режим на мобильных */
+@media (max-height: 500px) and (orientation: landscape) {
+  .header {
+    height: 48px;
+  }
+
+  .bottom-nav {
+    height: 48px;
+  }
+
+  .bottom-nav__icon {
+    font-size: 1.25rem;
+  }
+
+  .bottom-nav__label {
+    display: none;
+  }
+}
