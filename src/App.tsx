@@ -8,6 +8,7 @@ import { MatchesPage } from './pages/MatchesPage'
 import { StandingsPage } from './pages/StandingsPage'
 import { LeaderboardPage } from './pages/LeaderboardPage'
 import { MyPredictionsPage } from './pages/MyPredictionsPage'
+import { PredictPage } from './pages/PredictPage'
 import './App.css'
 
 function App() {
@@ -25,6 +26,7 @@ function App() {
               }
             >
               <Route path="/" element={<MatchesPage />} />
+              <Route path="/predict/:matchId" element={<PredictPage />} />
               <Route path="/standings" element={<StandingsPage />} />
               <Route path="/leaderboard" element={<LeaderboardPage />} />
               <Route path="/predictions" element={<MyPredictionsPage />} />

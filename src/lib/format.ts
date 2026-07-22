@@ -8,6 +8,18 @@ const MONTHS_SHORT = [
   'июл', 'авг', 'сен', 'окт', 'ноя', 'дек',
 ]
 
+const WEEKDAYS = [
+  'воскресенье', 'понедельник', 'вторник', 'среда',
+  'четверг', 'пятница', 'суббота',
+]
+
+const WEEKDAYS_SHORT = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб']
+
+export function formatWeekday(date: string | Date, format: 'long' | 'short' = 'long'): string {
+  const d = new Date(date)
+  return format === 'long' ? WEEKDAYS[d.getDay()] : WEEKDAYS_SHORT[d.getDay()]
+}
+
 export function formatDate(date: string | Date, format: 'long' | 'short' = 'long'): string {
   const d = new Date(date)
   const day = d.getDate()

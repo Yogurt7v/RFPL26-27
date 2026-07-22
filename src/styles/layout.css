@@ -28,6 +28,9 @@
 }
 
 .header__logo {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
   font-size: var(--font-size-lg);
   font-weight: 700;
   color: var(--color-text);
@@ -36,6 +39,12 @@
 
 .header__logo:hover {
   text-decoration: none;
+}
+
+.header__logo-img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
 }
 
 .header__right {

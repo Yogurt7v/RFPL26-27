@@ -1,10 +1,11 @@
 import { NavLink } from 'react-router-dom'
+import { SoccerBallIcon, TableIcon, TrophyIcon, PersonIcon } from './Icons'
 
 const navItems = [
-  { to: '/', icon: '🏠', label: 'Матчи' },
-  { to: '/standings', icon: '📊', label: 'Таблица' },
-  { to: '/leaderboard', icon: '🏆', label: 'Лидеры' },
-  { to: '/predictions', icon: '👤', label: 'Я' },
+  { to: '/', icon: SoccerBallIcon, label: 'Матчи' },
+  { to: '/standings', icon: TableIcon, label: 'Таблица' },
+  { to: '/leaderboard', icon: TrophyIcon, label: 'Лидеры' },
+  { to: '/predictions', icon: PersonIcon, label: 'Я' },
 ]
 
 export function BottomNav() {
@@ -19,7 +20,7 @@ export function BottomNav() {
             `bottom-nav__item ${isActive ? 'bottom-nav__item--active' : ''}`
           }
         >
-          <span className="bottom-nav__icon">{item.icon}</span>
+          <item.icon className="bottom-nav__icon" size={24} />
           <span className="bottom-nav__label">{item.label}</span>
         </NavLink>
       ))}

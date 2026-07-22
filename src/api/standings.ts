@@ -19,18 +19,18 @@ export async function getStandings(): Promise<Standing[]> {
 
     const standings: Standing[] = []
 
-    // Находим таблицу
-    const tableMatch = html.match(/<div id="competition_table">[\s\S]*?<table[^>]*>([\s\S]*?)<\/table>/)
-    if (!tableMatch) return []
+    // Находим таблицу по id
+    const tableStart = html.indexOf('id="competition_table"')
+    if (tableStart === -1) return []
 
-    const tableHtml = tableMatch[1]
+    const tableSection = html.substring(tableStart, tableStart + 10000)
 
-    // Разбиваем по строкам
+    // Извлекаем строки таблицы
     const rowRegex = /<tr>([\s\S]*?)<\/tr>/g
     let rowMatch
     let position = 0
 
-    while ((rowMatch = rowRegex.exec(tableHtml)) !== null) {
+    while ((rowMatch = rowRegex.exec(tableSection)) !== null) {
       const rowHtml = rowMatch[1]
 
       // Извлекаем название команды

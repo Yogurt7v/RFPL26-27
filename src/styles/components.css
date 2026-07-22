@@ -141,20 +141,44 @@
 
 /* Match Card */
 .match-card {
-  background-color: var(--color-bg-card);
+  background: linear-gradient(135deg, var(--color-bg-card) 0%, var(--color-bg-secondary) 100%);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--spacing-md);
   margin-bottom: var(--spacing-sm);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.match-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.match-card__header {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
 }
 
 .match-card__date {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
-  margin-bottom: var(--spacing-sm);
 }
 
-.match-card__teams {
+.match-card__weekday {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.match-card__time {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.match-card__content {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -163,61 +187,84 @@
 
 .match-card__team {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-xs);
   flex: 1;
 }
 
 .match-card__team--away {
-  justify-content: flex-end;
-  text-align: right;
+  text-align: center;
 }
 
 .match-card__logo {
-  width: 32px;
-  height: 32px;
+  width: 48px;
+  height: 48px;
   object-fit: contain;
 }
 
 .match-card__name {
-  font-weight: 500;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.2;
 }
 
 .match-card__score {
-  font-size: var(--font-size-xl);
-  font-weight: 700;
-  min-width: 60px;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 80px;
+}
+
+.match-card__score-value {
+  font-size: var(--font-size-2xl);
+  font-weight: 900;
+  letter-spacing: 2px;
+}
+
+.match-card__score-separator {
+  margin: 0 4px;
+  opacity: 0.5;
 }
 
 .match-card__vs {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
   color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
+  letter-spacing: 2px;
+}
+
+.match-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-border);
 }
 
 .match-card__status {
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
-  text-align: center;
-  margin-top: var(--spacing-sm);
 }
 
-.match-card--live .match-card__score {
+.match-card--live .match-card__score-value {
   color: var(--color-error);
 }
 
-.match-card--finished .match-card__score {
+.match-card--finished .match-card__score-value {
   color: var(--color-success);
 }
 
 .match-card__predict-btn {
-  width: 100%;
-  margin-top: var(--spacing-sm);
-  padding: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-md);
   background-color: var(--color-primary);
   color: white;
-  border-radius: var(--radius-md);
-  font-weight: 500;
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  transition: background-color var(--transition-fast);
 }
 
 .match-card__predict-btn:hover {
@@ -238,6 +285,19 @@
   border-radius: var(--radius-md);
   background-color: var(--color-bg);
   color: var(--color-text);
+}
+
+.match-list__group {
+  margin-bottom: var(--spacing-lg);
+}
+
+.match-list__date-header {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 2px solid var(--color-primary);
 }
 
 /* Prediction Form */
