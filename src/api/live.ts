@@ -1,3 +1,8 @@
+function stripScripts(html: string): string {
+  return html.replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, '')
+}
+
 export interface LiveScore {
   matchId: string
   homeTeam: string
@@ -10,8 +15,8 @@ export interface LiveScore {
 
 export async function getLiveScores(): Promise<LiveScore[]> {
   try {
-    const response = await fetch('https://soccer365.ru/online/')
-    const html = await response.text()
+    const response = await fetch('/api/soccer365/online/')
+    const html = stripScripts(await response.text())
 
     const liveScores: LiveScore[] = []
 

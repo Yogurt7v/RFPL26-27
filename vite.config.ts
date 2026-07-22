@@ -36,4 +36,13 @@ export default defineConfig({
       }
     })
   ],
+  server: {
+    proxy: {
+      '/api/soccer365': {
+        target: 'https://soccer365.ru',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/soccer365/, ''),
+      }
+    }
+  }
 })

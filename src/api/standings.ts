@@ -1,3 +1,8 @@
+function stripScripts(html: string): string {
+  return html.replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, '')
+}
+
 export interface Standing {
   position: number
   teamName: string
@@ -14,18 +19,16 @@ export interface Standing {
 
 export async function getStandings(): Promise<Standing[]> {
   try {
-    const response = await fetch('https://soccer365.ru/competitions/13/')
-    const html = await response.text()
+    const response = await fetch('/api/soccer365/competitions/13/')
+    const html = stripScripts(await response.text())
 
     const standings: Standing[] = []
 
-    // Находим таблицу по id
     const tableStart = html.indexOf('id="competition_table"')
     if (tableStart === -1) return []
 
     const tableSection = html.substring(tableStart, tableStart + 10000)
 
-    // Извлекаем строки таблицы
     const rowRegex = /<tr>([\s\S]*?)<\/tr>/g
     let rowMatch
     let position = 0
@@ -33,14 +36,12 @@ export async function getStandings(): Promise<Standing[]> {
     while ((rowMatch = rowRegex.exec(tableSection)) !== null) {
       const rowHtml = rowMatch[1]
 
-      // Извлекаем название команды
       const teamMatch = rowHtml.match(/<a[^>]+href="\/clubs\/(\d+)\/"[^>]*>([^<]+)<\/a>/)
       if (!teamMatch) continue
 
       const teamId = parseInt(teamMatch[1])
       const teamName = teamMatch[2].trim()
 
-      // Извлекаем все числовые значения из ячеек
       const cellRegex = /<td[^>]*class="al_c"[^>]*>([\s\S]*?)<\/td>/g
       const values: number[] = []
       let cellMatch

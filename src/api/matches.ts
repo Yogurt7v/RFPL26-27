@@ -1,5 +1,10 @@
 import { getTeamByName } from '../lib/teams'
 
+function stripScripts(html: string): string {
+  return html.replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, '')
+}
+
 export interface Match {
   id: string
   round: number
@@ -76,8 +81,8 @@ function parseMatchesFromHTML(html: string, roundNumber: number): Match[] {
 
 export async function getMatchesByRound(roundNumber: number): Promise<Match[]> {
   try {
-    const response = await fetch('https://soccer365.ru/competitions/13/shedule/')
-    const html = await response.text()
+    const response = await fetch('/api/soccer365/competitions/13/shedule/')
+    const html = stripScripts(await response.text())
 
     const roundRegex = new RegExp(`${roundNumber}-й тур([\\s\\S]*?)(?=\\d+-й тур|$)`)
     const roundMatch = html.match(roundRegex)

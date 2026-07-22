@@ -255,3 +255,21 @@ export const getMatchesByRound = (round: number): ScheduleMatch[] =>
 
 export const getMatchesByTeam = (teamName: string): ScheduleMatch[] =>
   schedule.filter(m => m.homeTeam === teamName || m.awayTeam === teamName)
+
+export function getNextMatch(): ScheduleMatch | undefined {
+  const now = new Date()
+
+  for (const match of schedule) {
+    const matchDate = new Date(`${match.date}T${match.time}:00`)
+    if (matchDate > now) {
+      return match
+    }
+  }
+
+  return undefined
+}
+
+export function getRoundByMatchId(matchId: string): number | undefined {
+  const match = schedule.find(m => m.id === matchId)
+  return match?.round
+}

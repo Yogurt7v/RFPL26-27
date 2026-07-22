@@ -10,6 +10,7 @@ interface MatchCardProps {
   awayScore?: number | null
   status: 'SCHEDULED' | 'LIVE' | 'FINISHED'
   onPredict?: () => void
+  isNext?: boolean
 }
 
 export function MatchCard({
@@ -21,12 +22,13 @@ export function MatchCard({
   awayScore,
   status,
   onPredict,
+  isNext = false,
 }: MatchCardProps) {
   const home = getTeamByName(homeTeam)
   const away = getTeamByName(awayTeam)
 
   return (
-    <div className={`match-card match-card--${status.toLowerCase()}`}>
+    <div className={`match-card match-card--${status.toLowerCase()} ${isNext ? 'match-card--next' : ''}`}>
       <div className="match-card__header">
         <span className="match-card__date">{formatDate(date, 'short')}</span>
         <span className="match-card__weekday">{formatWeekday(date, 'long')}</span>
@@ -58,7 +60,6 @@ export function MatchCard({
         </div>
 
         <div className="match-card__team match-card__team--away">
-          <span className="match-card__name">{awayTeam}</span>
           {away && (
             <img
               src={away.logo}
@@ -66,6 +67,7 @@ export function MatchCard({
               className="match-card__logo"
             />
           )}
+          <span className="match-card__name">{awayTeam}</span>
         </div>
       </div>
 

@@ -154,6 +154,21 @@
   box-shadow: var(--shadow-md);
 }
 
+.match-card--next {
+  /*border: 2px solid var(--color-primary);*/
+  box-shadow: 0 0 0 2px var(--color-primary-light);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 2px var(--color-primary-light);
+  }
+  50% {
+    box-shadow: 0 0 0 6px var(--color-primary-light);
+  }
+}
+
 .match-card__header {
   display: flex;
   justify-content: center;
