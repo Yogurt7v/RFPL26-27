@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'icons/*.png'],
+      includeAssets: ['favicon.ico', 'favicon/*.png'],
       manifest: {
         name: 'РПЛ Прогнозы 2026/2027',
         short_name: 'РПЛ Прогнозы',
@@ -17,18 +17,18 @@ export default defineConfig({
         display: 'standalone',
         icons: [
           {
-            src: 'icons/icon-192x192.png',
+            src: 'favicon/android-icon-192x192.png',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: 'icons/icon-512x512.png',
-            sizes: '512x512',
+            src: 'favicon/android-icon-144x144.png',
+            sizes: '144x144',
             type: 'image/png'
           },
           {
-            src: 'icons/icon-512x512.png',
-            sizes: '512x512',
+            src: 'favicon/android-icon-192x192.png',
+            sizes: '192x192',
             type: 'image/png',
             purpose: 'maskable'
           }
