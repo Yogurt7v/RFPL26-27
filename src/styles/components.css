@@ -381,14 +381,28 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: var(--spacing-md);
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
 }
 
-.match-list__round-select {
+.match-list__filters {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.match-list__select {
   padding: var(--spacing-xs) var(--spacing-sm);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background-color: var(--color-bg);
   color: var(--color-text);
+  font-size: var(--font-size-sm);
+}
+
+.match-list__empty {
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: var(--color-text-secondary);
 }
 
 .match-list__group {
