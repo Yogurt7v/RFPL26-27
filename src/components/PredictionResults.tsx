@@ -14,13 +14,19 @@ export function PredictionResults({ userId }: PredictionResultsProps) {
 
   useEffect(() => {
     async function load() {
-      const data = await getUserPredictions(userId)
-      if (data.length === 0) {
-        setError('У вас пока нет прогнозов')
-      } else {
-        setPredictions(data)
+      try {
+        const data = await getUserPredictions(userId)
+        if (data.length === 0) {
+          setError('У вас пока нет прогнозов')
+        } else {
+          setPredictions(data)
+        }
+      } catch (err) {
+        console.error('Error loading predictions:', err)
+        setError('Ошибка загрузки данных')
+      } finally {
+        setIsLoading(false)
       }
-      setIsLoading(false)
     }
     load()
   }, [userId])

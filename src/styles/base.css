@@ -15,7 +15,8 @@ body {
     Ubuntu, Cantarell, sans-serif;
   background-color: var(--color-bg);
   color: var(--color-text);
-  line-height: 1.5;
+  line-height: 1.6;
+  font-weight: 300;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
@@ -25,10 +26,11 @@ body {
 a {
   color: var(--color-primary);
   text-decoration: none;
+  transition: color var(--transition-fast);
 }
 
 a:hover {
-  text-decoration: underline;
+  color: var(--color-primary-hover);
 }
 
 button {
@@ -50,10 +52,11 @@ img {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-weight: 600;
+  font-weight: 300;
   line-height: 1.2;
+  letter-spacing: -0.01em;
 }
 
-h1 { font-size: var(--font-size-2xl); }
+h1 { font-size: var(--font-size-2xl); font-weight: 400; }
 h2 { font-size: var(--font-size-xl); }
 h3 { font-size: var(--font-size-lg); }

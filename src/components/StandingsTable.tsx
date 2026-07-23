@@ -9,13 +9,19 @@ export function StandingsTable() {
 
   useEffect(() => {
     async function load() {
-      const data = await getStandings()
-      if (data.length === 0) {
-        setError('Не удалось загрузить турнирную таблицу')
-      } else {
-        setStandings(data)
+      try {
+        const data = await getStandings()
+        if (data.length === 0) {
+          setError('Не удалось загрузить турнирную таблицу')
+        } else {
+          setStandings(data)
+        }
+      } catch (err) {
+        console.error('Error loading standings:', err)
+        setError('Ошибка загрузки данных')
+      } finally {
+        setIsLoading(false)
       }
-      setIsLoading(false)
     }
     load()
   }, [])
@@ -37,8 +43,8 @@ export function StandingsTable() {
           <tr>
             <th className="standings-table__th standings-table__th--pos">#</th>
             <th className="standings-table__th standings-table__th--team">Команда</th>
-            <th className="standings-table__th">Игры</th>
             <th className="standings-table__th standings-table__th--pts">Очки</th>
+            <th className="standings-table__th">Игры</th>
             <th className="standings-table__th">П</th>
             <th className="standings-table__th">Н</th>
             <th className="standings-table__th">П</th>
@@ -65,10 +71,10 @@ export function StandingsTable() {
                   )}
                   <span>{row.teamName}</span>
                 </td>
-                <td className="standings-table__td">{row.played}</td>
                 <td className="standings-table__td standings-table__td--pts">
                   <strong>{row.points}</strong>
                 </td>
+                <td className="standings-table__td">{row.played}</td>
                 <td className="standings-table__td">{row.won}</td>
                 <td className="standings-table__td">{row.drawn}</td>
                 <td className="standings-table__td">{row.lost}</td>

@@ -60,11 +60,11 @@ export function SettingsPage() {
             className="settings-range__input"
           />
           <div className="settings-range__labels">
-            <span className="settings-range__label">А</span>
-            <span className="settings-range__label">А</span>
-            <span className="settings-range__label">А</span>
-            <span className="settings-range__label">А</span>
-            <span className="settings-range__label">А</span>
+            <span className="settings-range__label">1</span>
+            <span className="settings-range__label">2</span>
+            <span className="settings-range__label">3</span>
+            <span className="settings-range__label">4</span>
+            <span className="settings-range__label">5</span>
           </div>
         </div>
         <span className="settings-hint">{FONT_SIZE_LABELS[fontSize]}</span>

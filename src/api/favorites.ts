@@ -19,17 +19,21 @@ export async function toggleFavorite(
     .maybeSingle()
 
   if (existing) {
-    await supabase
-      .from('favorites')
-      .delete()
-      .eq('user_id', userId)
-      .eq('match_id', matchId)
+    const { error } = await supabase.rpc('delete_favorite', {
+      p_user_id: userId,
+      p_match_id: matchId,
+    })
+    if (error) {
+      console.error('Error removing favorite:', error)
+    }
     return false
   } else {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('favorites')
       .insert({ user_id: userId, match_id: matchId })
-    if (error) {
+      .select()
+      .single()
+    if (error || !data) {
       console.error('Error adding favorite:', error)
       return false
     }
@@ -52,16 +56,20 @@ export async function getFavorites(matchId: string): Promise<Favorite[]> {
 
   const userIds = data.map((r: Record<string, unknown>) => r.user_id as string)
 
-  const { data: users } = await supabase
-    .from('users')
-    .select('id, username')
-    .in('id', userIds)
+  let userMap = new Map<string, string>()
+  try {
+    const { data: users } = await supabase
+      .from('users')
+      .select('id, username')
+      .in('id', userIds)
 
-  const userMap = new Map<string, string>()
-  if (users) {
-    for (const u of users as Array<{ id: string; username: string }>) {
-      userMap.set(u.id, u.username)
+    if (users) {
+      for (const u of users as Array<{ id: string; username: string }>) {
+        userMap.set(u.id, u.username)
+      }
     }
+  } catch {
+    // usernames останутся "Аноним"
   }
 
   return data.map((row: Record<string, unknown>) => ({
@@ -76,12 +84,16 @@ export async function isFavorite(
   userId: string,
   matchId: string
 ): Promise<boolean> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('favorites')
     .select('id')
     .eq('user_id', userId)
     .eq('match_id', matchId)
     .maybeSingle()
 
+  if (error) {
+    console.error('Error checking favorite:', error)
+    return false
+  }
   return !!data
 }

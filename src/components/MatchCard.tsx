@@ -40,19 +40,23 @@ export function MatchCard({
 
   useEffect(() => {
     if (isLoading) return
+    let cancelled = false
 
     async function load() {
-      const favorites = await getFavorites(matchId)
-      setFavUsers(favorites.map(f => f.username || 'Аноним').filter(Boolean))
-
-      if (user) {
-        const fav = await isFavorite(user.id, matchId)
+      try {
+        const [favorites, fav] = await Promise.all([
+          getFavorites(matchId),
+          user ? isFavorite(user.id, matchId) : Promise.resolve(false),
+        ])
+        if (cancelled) return
+        setFavUsers(favorites.map(f => f.username || 'Аноним').filter(Boolean))
         setIsFav(fav)
-      } else {
-        setIsFav(false)
+      } catch (err) {
+        console.error('Error loading favorites:', err)
       }
     }
     load()
+    return () => { cancelled = true }
   }, [user, isLoading, matchId])
 
   const handleToggleFavorite = async () => {

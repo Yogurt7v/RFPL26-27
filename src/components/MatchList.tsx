@@ -16,7 +16,7 @@ interface MatchGroup {
 
 function scheduleToMatch(scheduleMatch: { id: string; round: number; homeTeam: string; awayTeam: string; date: string; time: string }): Match {
   return {
-    id: `${scheduleMatch.round}-${scheduleMatch.homeTeam}-${scheduleMatch.awayTeam}`,
+    id: scheduleMatch.id,
     round: scheduleMatch.round,
     homeTeam: scheduleMatch.homeTeam,
     awayTeam: scheduleMatch.awayTeam,
@@ -36,9 +36,9 @@ function getTeamMatches(teamName: string): Match[] {
 
 function findNextMatchForTeam(teamName: string): string | undefined {
   const now = new Date()
-  const teamMatches = getTeamMatches(teamName)
+  const teamScheduleMatches = schedule.filter(m => m.homeTeam === teamName || m.awayTeam === teamName)
 
-  for (const match of teamMatches) {
+  for (const match of teamScheduleMatches) {
     const matchDate = new Date(`${match.date}T${match.time}:00`)
     if (matchDate > now) {
       return match.id

@@ -12,13 +12,19 @@ export function LeaderboardTable({ currentUserId }: LeaderboardTableProps) {
 
   useEffect(() => {
     async function load() {
-      const data = await getLeaderboard()
-      if (data.length === 0) {
-        setError('Пока нет данных для таблицы лидеров')
-      } else {
-        setEntries(data)
+      try {
+        const data = await getLeaderboard()
+        if (data.length === 0) {
+          setError('Пока нет данных для таблицы лидеров')
+        } else {
+          setEntries(data)
+        }
+      } catch (err) {
+        console.error('Error loading leaderboard:', err)
+        setError('Ошибка загрузки данных')
+      } finally {
+        setIsLoading(false)
       }
-      setIsLoading(false)
     }
     load()
   }, [])

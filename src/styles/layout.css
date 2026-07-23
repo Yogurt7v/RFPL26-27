@@ -26,7 +26,6 @@
   padding: 0 var(--spacing-md);
   background-color: var(--color-bg-card);
   border-bottom: 1px solid var(--color-border);
-  box-shadow: var(--shadow-sm);
 }
 
 .header__logo {
@@ -34,9 +33,10 @@
   align-items: center;
   gap: var(--spacing-sm);
   font-size: var(--font-size-lg);
-  font-weight: 700;
+  font-weight: 400;
   color: var(--color-text);
   text-decoration: none;
+  letter-spacing: -0.02em;
 }
 
 .header__logo:hover {
@@ -44,8 +44,8 @@
 }
 
 .header__logo-img {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   object-fit: contain;
 }
 
@@ -58,12 +58,13 @@
 .header__username {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
+  font-weight: 300;
 }
 
 .header__logout {
   font-size: var(--font-size-lg);
   padding: var(--spacing-xs);
-  opacity: 0.7;
+  opacity: 0.5;
   transition: opacity var(--transition-fast);
 }
 
@@ -84,7 +85,6 @@
   height: var(--bottom-nav-height);
   background-color: var(--color-bg-card);
   border-top: 1px solid var(--color-border);
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .bottom-nav__item {
@@ -109,11 +109,12 @@
 }
 
 .bottom-nav__icon {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   line-height: 1;
 }
 
 .bottom-nav__label {
   font-size: var(--font-size-xs);
   margin-top: 2px;
+  font-weight: 400;
 }

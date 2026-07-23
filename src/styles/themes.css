@@ -1,34 +1,44 @@
 /* Светлая тема (по умолчанию) */
 [data-theme="light"] {
-  --color-bg: #ffffff;
-  --color-bg-secondary: #f5f5f5;
-  --color-bg-card: #ffffff;
-  --color-text: #1a1a1a;
-  --color-text-secondary: #666666;
-  --color-primary: #1a73e8;
-  --color-primary-hover: #1557b0;
-  --color-primary-light: #e8f0fe;
-  --color-border: #e0e0e0;
-  --color-success: #34a853;
-  --color-error: #ea4335;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.15);
+  --color-bg: #F8F9FA;
+  --color-bg-secondary: #E9ECEF;
+  --color-bg-card: #FFFFFF;
+  --color-text: #1A1A2E;
+  --color-text-secondary: #6C757D;
+  --color-primary: #1A3A5C;
+  --color-primary-hover: #0F2640;
+  --color-primary-light: #E8EEF4;
+  --color-accent: #DC3545;
+  --color-accent-hover: #BB2D3B;
+  --color-border: #DEE2E6;
+  --color-success: #2E7D32;
+  --color-error: #DC3545;
+  --color-warning: #F59E0B;
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --card-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
 /* Тёмная тема */
 [data-theme="dark"] {
-  --color-bg: #121212;
-  --color-bg-secondary: #1e1e1e;
-  --color-bg-card: #2d2d2d;
-  --color-text: #ffffff;
-  --color-text-secondary: #b0b0b0;
-  --color-primary: #669df6;
-  --color-primary-hover: #4285f4;
-  --color-primary-light: #1a2332;
-  --color-border: #404040;
-  --color-success: #81c995;
-  --color-error: #f28b82;
+  --color-bg: #0F1117;
+  --color-bg-secondary: #1A1D27;
+  --color-bg-card: #1E2130;
+  --color-text: #E8E9ED;
+  --color-text-secondary: #8B8FA3;
+  --color-primary: #5B8DBE;
+  --color-primary-hover: #7AADE0;
+  --color-primary-light: #1C2A3A;
+  --color-accent: #FF6B6B;
+  --color-accent-hover: #FF8A8A;
+  --color-border: #2A2D3A;
+  --color-success: #5CB85C;
+  --color-error: #FF6B6B;
+  --color-warning: #F5C542;
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --card-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2);
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.5);

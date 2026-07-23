@@ -1,4 +1,4 @@
-import { useState, useActionState, useEffect } from 'react'
+import { useState, useActionState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 
@@ -81,78 +81,97 @@ export function LoginPage() {
     null
   )
 
+  const loginBtnRef = useRef<HTMLButtonElement>(null)
+  const registerBtnRef = useRef<HTMLButtonElement>(null)
+
   return (
     <div className="login-page">
-      <div className="login-card">
-        <h1>РПЛ Прогнозы</h1>
-        <p className="login-card__subtitle">Прогнозы матчей РПЛ 2026/2027</p>
+      <div className="login-brand">
+        <img className="login-brand__icon" src="/favicon/favicon-96x96.png" alt="Рфпл" />
+        <h1 className="login-brand__title">РФПЛ<br />Прогнозы</h1>
+        <p className="login-brand__subtitle">Прогнозы матчей РФПЛ 2026/2027</p>
+      </div>
+      <div className="login-form">
+        <div className="login-form__inner">
+          <div className="tabs">
+            <span
+              className="tabs__indicator"
+              style={{
+                transform: `translateX(${activeTab === 'register' ? '100%' : '0'})`,
+              }}
+            />
+            <button
+              ref={loginBtnRef}
+              className={`tabs__btn ${activeTab === 'login' ? 'tabs__btn--active' : ''}`}
+              onClick={() => setActiveTab('login')}
+            >
+              Вход
+            </button>
+            <button
+              ref={registerBtnRef}
+              className={`tabs__btn ${activeTab === 'register' ? 'tabs__btn--active' : ''}`}
+              onClick={() => setActiveTab('register')}
+            >
+              Регистрация
+            </button>
+          </div>
 
-        <div className="tabs">
-          <button
-            className={activeTab === 'login' ? 'active' : ''}
-            onClick={() => setActiveTab('login')}
-          >
-            Вход
-          </button>
-          <button
-            className={activeTab === 'register' ? 'active' : ''}
-            onClick={() => setActiveTab('register')}
-          >
-            Регистрация
-          </button>
+          {activeTab === 'login' ? (
+            <form action={loginFormAction} key="login">
+              <input
+                className="input"
+                name="username"
+                type="text"
+                placeholder="Логин"
+                minLength={3}
+                required
+              />
+              <input
+                className="input"
+                name="password"
+                type="password"
+                placeholder="Пароль"
+                minLength={6}
+                required
+              />
+              <button type="submit" className="btn btn--primary btn--full" disabled={loginPending}>
+                {loginPending ? 'Вход...' : 'Войти'}
+              </button>
+              {loginMessage && (
+                <div className={`login-message login-message--${loginMessage.type}`}>
+                  {loginMessage.text}
+                </div>
+              )}
+            </form>
+          ) : (
+            <form action={registerFormAction} key="register">
+              <input
+                className="input"
+                name="username"
+                type="text"
+                placeholder="Логин (мин. 3 символа)"
+                minLength={3}
+                required
+              />
+              <input
+                className="input"
+                name="password"
+                type="password"
+                placeholder="Пароль (мин. 6 символов)"
+                minLength={6}
+                required
+              />
+              <button type="submit" className="btn btn--primary btn--full" disabled={registerPending}>
+                {registerPending ? 'Регистрация...' : 'Зарегистрироваться'}
+              </button>
+              {registerMessage && (
+                <div className={`login-message login-message--${registerMessage.type}`}>
+                  {registerMessage.text}
+                </div>
+              )}
+            </form>
+          )}
         </div>
-
-        {activeTab === 'login' ? (
-          <form action={loginFormAction} key="login">
-            <input
-              name="username"
-              type="text"
-              placeholder="Логин"
-              minLength={3}
-              required
-            />
-            <input
-              name="password"
-              type="password"
-              placeholder="Пароль"
-              minLength={6}
-              required
-            />
-            <button type="submit" disabled={loginPending}>
-              {loginPending ? 'Вход...' : 'Войти'}
-            </button>
-            {loginMessage && (
-              <div className={`login-message login-message--${loginMessage.type}`}>
-                {loginMessage.text}
-              </div>
-            )}
-          </form>
-        ) : (
-          <form action={registerFormAction} key="register">
-            <input
-              name="username"
-              type="text"
-              placeholder="Логин (мин. 3 символа)"
-              minLength={3}
-              required
-            />
-            <input
-              name="password"
-              type="password"
-              placeholder="Пароль (мин. 6 символов)"
-              minLength={6}
-              required
-            />
-            <button type="submit" disabled={registerPending}>
-              {registerPending ? 'Регистрация...' : 'Зарегистрироваться'}
-            </button>
-            {registerMessage && (
-              <div className={`login-message login-message--${registerMessage.type}`}>
-                {registerMessage.text}
-              </div>
-            )}
-          </form>
-        )}
       </div>
     </div>
   )

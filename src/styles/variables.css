@@ -8,19 +8,27 @@
   --font-size-xl: 1.25rem;
   --font-size-2xl: 1.5rem;
 
-  /* Цвета (светлая тема) */
-  --color-bg: #ffffff;
-  --color-bg-secondary: #f5f5f5;
-  --color-bg-card: #ffffff;
-  --color-text: #1a1a1a;
-  --color-text-secondary: #666666;
-  --color-primary: #1a73e8;
-  --color-primary-hover: #1557b0;
-  --color-primary-light: #e8f0fe;
-  --color-border: #e0e0e0;
-  --color-success: #34a853;
-  --color-error: #ea4335;
-  --color-warning: #fbbc04;
+  /* Цвета (светлая тема — default) */
+  --color-bg: #F8F9FA;
+  --color-bg-secondary: #E9ECEF;
+  --color-bg-card: #FFFFFF;
+  --color-text: #1A1A2E;
+  --color-text-secondary: #6C757D;
+  --color-primary: #1A3A5C;
+  --color-primary-hover: #0F2640;
+  --color-primary-light: #E8EEF4;
+  --color-accent: #DC3545;
+  --color-accent-hover: #BB2D3B;
+  --color-border: #DEE2E6;
+  --color-success: #2E7D32;
+  --color-error: #DC3545;
+  --color-warning: #F59E0B;
+
+  /* Дополнительные токены */
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --card-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --card-accent: var(--color-primary);
+  --input-focus-ring: 0 0 0 3px rgba(26, 58, 92, 0.15);
 
   /* Отступы */
   --spacing-xs: 4px;
@@ -36,9 +44,9 @@
   --radius-full: 9999px;
 
   /* Тени */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.15);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.12);
 
   /* Размеры */
   --header-height: 56px;

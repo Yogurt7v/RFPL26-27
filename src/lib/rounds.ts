@@ -8,7 +8,7 @@ export interface Round {
 export const SEASON_CONFIG = {
   totalRounds: 30,
   matchesPerRound: 8,
-  totalMatches: 480,
+  totalMatches: 240,
   teamsPerLeague: 16,
 }
 

@@ -97,6 +97,67 @@
   }
 }
 
+/* Login Page — Mobile (< 768px) */
+@media (max-width: 767px) {
+  .login-page {
+    flex-direction: row;
+  }
+
+  .login-brand {
+    flex: 0 0 35%;
+    padding: var(--spacing-md);
+  }
+
+  .login-brand__icon {
+    width: 40px;
+    height: 40px;
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .login-brand__title {
+    font-size: 1.1rem;
+  }
+
+  .login-brand__subtitle {
+    display: none;
+  }
+
+  .login-form {
+    flex: 1;
+    padding: var(--spacing-md);
+  }
+
+  .login-form__inner {
+    max-width: none;
+  }
+}
+
+/* Login Page — Very small screens (< 360px) */
+@media (max-width: 359px) {
+  .login-brand {
+    flex: 0 0 30%;
+    padding: var(--spacing-sm);
+  }
+
+  .login-brand__icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .login-brand__title {
+    font-size: 0.9rem;
+  }
+
+  .tabs {
+    padding: 2px;
+  }
+
+  .tabs__btn {
+    padding: 6px 8px;
+    font-size: var(--font-size-xs);
+  }
+}
+
 /* Горизонтальный режим на мобильных */
 @media (max-height: 500px) and (orientation: landscape) {
   .header {
@@ -113,5 +174,36 @@
 
   .bottom-nav__label {
     display: none;
+  }
+}
+
+/* Login Page — Landscape on mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+  .login-page {
+    flex-direction: row;
+  }
+
+  .login-brand {
+    flex: 0 0 40%;
+    flex-direction: column;
+    padding: var(--spacing-md);
+  }
+
+  .login-brand__icon {
+    width: 36px;
+    height: 36px;
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .login-brand__title {
+    font-size: 1.2rem;
+  }
+
+  .login-brand__subtitle {
+    display: none;
+  }
+
+  .login-form {
+    padding: var(--spacing-md);
   }
 }

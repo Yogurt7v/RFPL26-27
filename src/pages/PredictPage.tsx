@@ -20,6 +20,7 @@ export function PredictPage() {
   const handleSubmit = async (prediction: PredictionData) => {
     console.log('Prediction submitted:', prediction)
     // TODO: Сохранить прогноз в Supabase
+    await new Promise(resolve => setTimeout(resolve, 100))
     alert('Прогноз сохранён!')
     navigate('/')
   }
