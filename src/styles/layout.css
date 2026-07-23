@@ -24,19 +24,34 @@
   justify-content: space-between;
   height: var(--header-height);
   padding: 0 var(--spacing-md);
-  background-color: var(--color-bg-card);
-  border-bottom: 1px solid var(--color-border);
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 36px,
+      rgba(26, 58, 92, 0.25) 36px,
+      rgba(26, 58, 92, 0.25) 52px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 72px,
+      rgba(220, 53, 69, 0.22) 72px,
+      rgba(220, 53, 69, 0.22) 88px
+    ),
+    var(--color-bg-card);
 }
 
 .header__logo {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-md);
   font-weight: 400;
   color: var(--color-text);
   text-decoration: none;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
+  text-shadow: 0 0 8px var(--color-bg-card), 0 0 16px var(--color-bg-card);
 }
 
 .header__logo:hover {
@@ -44,8 +59,8 @@
 }
 
 .header__logo-img {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   object-fit: contain;
 }
 
@@ -64,8 +79,9 @@
 .header__logout {
   font-size: var(--font-size-lg);
   padding: var(--spacing-xs);
-  opacity: 0.5;
+  opacity: 0.4;
   transition: opacity var(--transition-fast);
+  color: var(--color-text);
 }
 
 .header__logout:hover {
@@ -88,6 +104,7 @@
 }
 
 .bottom-nav__item {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -106,6 +123,17 @@
 
 .bottom-nav__item--active {
   color: var(--color-primary);
+}
+
+.bottom-nav__item--active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 25%;
+  right: 25%;
+  height: 2px;
+  background-color: var(--color-primary);
+  border-radius: 0 0 2px 2px;
 }
 
 .bottom-nav__icon {
