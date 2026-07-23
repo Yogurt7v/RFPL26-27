@@ -121,6 +121,7 @@ export function MatchList({ onPredict }: MatchListProps) {
                 {group.matches.map(match => (
                   <MatchCard
                     key={match.id}
+                    matchId={match.id}
                     homeTeam={match.homeTeam}
                     awayTeam={match.awayTeam}
                     date={match.date}

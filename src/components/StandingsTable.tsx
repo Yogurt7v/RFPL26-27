@@ -38,13 +38,13 @@ export function StandingsTable() {
             <th className="standings-table__th standings-table__th--pos">#</th>
             <th className="standings-table__th standings-table__th--team">Команда</th>
             <th className="standings-table__th">Игры</th>
-            <th className="standings-table__th">Победы</th>
-            <th className="standings-table__th">Ничьи</th>
-            <th className="standings-table__th">Поражения</th>
-            <th className="standings-table__th">Забито</th>
-            <th className="standings-table__th">Пропущено</th>
+            <th className="standings-table__th standings-table__th--pts">Очки</th>
+            <th className="standings-table__th">П</th>
+            <th className="standings-table__th">Н</th>
+            <th className="standings-table__th">П</th>
+            <th className="standings-table__th">З</th>
+            <th className="standings-table__th">П</th>
             <th className="standings-table__th">+/−</th>
-            <th className="standings-table__th standings-table__th--pts">О</th>
           </tr>
         </thead>
         <tbody>
@@ -66,6 +66,9 @@ export function StandingsTable() {
                   <span>{row.teamName}</span>
                 </td>
                 <td className="standings-table__td">{row.played}</td>
+                <td className="standings-table__td standings-table__td--pts">
+                  <strong>{row.points}</strong>
+                </td>
                 <td className="standings-table__td">{row.won}</td>
                 <td className="standings-table__td">{row.drawn}</td>
                 <td className="standings-table__td">{row.lost}</td>
@@ -73,9 +76,6 @@ export function StandingsTable() {
                 <td className="standings-table__td">{row.goalsAgainst}</td>
                 <td className="standings-table__td">
                   {row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}
-                </td>
-                <td className="standings-table__td standings-table__td--pts">
-                  <strong>{row.points}</strong>
                 </td>
               </tr>
             )

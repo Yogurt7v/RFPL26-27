@@ -1,7 +1,7 @@
 import { createContext, useState, useEffect, type ReactNode } from 'react'
 
 type Theme = 'light' | 'dark'
-type FontSize = 'small' | 'medium' | 'large'
+type FontSize = 1 | 2 | 3 | 4 | 5
 
 interface ThemeContextType {
   theme: Theme
@@ -23,8 +23,9 @@ function loadTheme(): Theme {
 
 function loadFontSize(): FontSize {
   const stored = localStorage.getItem(FONT_SIZE_KEY)
-  if (stored === 'small' || stored === 'medium' || stored === 'large') return stored
-  return 'medium'
+  const num = parseInt(stored || '')
+  if (num >= 1 && num <= 5) return num as FontSize
+  return 3
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
@@ -37,8 +38,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [theme])
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-font-size', fontSize)
-    localStorage.setItem(FONT_SIZE_KEY, fontSize)
+    document.documentElement.setAttribute('data-font-size', String(fontSize))
+    localStorage.setItem(FONT_SIZE_KEY, String(fontSize))
   }, [fontSize])
 
   const toggleTheme = () => {

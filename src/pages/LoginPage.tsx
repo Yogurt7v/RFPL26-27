@@ -1,52 +1,81 @@
-import { useState, useActionState } from 'react'
+import { useState, useActionState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 
 type Tab = 'login' | 'register'
+type MessageType = 'error' | 'success' | null
+
+interface Message {
+  text: string
+  type: MessageType
+}
 
 export function LoginPage() {
   const { login, register } = useAuth()
   const navigate = useNavigate()
 
   const [activeTab, setActiveTab] = useState<Tab>('login')
+  const [loginMessage, setLoginMessage] = useState<Message | null>(null)
+  const [registerMessage, setRegisterMessage] = useState<Message | null>(null)
 
-  const [loginState, loginFormAction, loginPending] = useActionState(
+  useEffect(() => {
+    setLoginMessage(null)
+    setRegisterMessage(null)
+  }, [activeTab])
+
+  const [, loginFormAction, loginPending] = useActionState(
     async (_prev: string | null, formData: FormData) => {
       const username = formData.get('username') as string
       const password = formData.get('password') as string
 
       if (!username || username.length < 3) {
-        return 'Логин должен быть не менее 3 символов'
+        setLoginMessage({ text: 'Логин должен быть не менее 3 символов', type: 'error' })
+        return 'validation'
       }
       if (!password || password.length < 6) {
-        return 'Пароль должен быть не менее 6 символов'
+        setLoginMessage({ text: 'Пароль должен быть не менее 6 символов', type: 'error' })
+        return 'validation'
       }
 
       const error = await login(username, password)
-      if (error) return error
+      if (error) {
+        setLoginMessage({ text: 'Неверный логин или пароль', type: 'error' })
+        return 'auth_error'
+      }
 
-      navigate('/')
+      setLoginMessage({ text: 'Вход выполнен!', type: 'success' })
+      setTimeout(() => navigate('/'), 500)
       return null
     },
     null
   )
 
-  const [registerState, registerFormAction, registerPending] = useActionState(
+  const [, registerFormAction, registerPending] = useActionState(
     async (_prev: string | null, formData: FormData) => {
       const username = formData.get('username') as string
       const password = formData.get('password') as string
 
       if (!username || username.length < 3) {
-        return 'Логин должен быть не менее 3 символов'
+        setRegisterMessage({ text: 'Логин должен быть не менее 3 символов', type: 'error' })
+        return 'validation'
       }
       if (!password || password.length < 6) {
-        return 'Пароль должен быть не менее 6 символов'
+        setRegisterMessage({ text: 'Пароль должен быть не менее 6 символов', type: 'error' })
+        return 'validation'
       }
 
       const error = await register(username, password)
-      if (error) return error
+      if (error) {
+        if (error.includes('duplicate') || error.includes('unique')) {
+          setRegisterMessage({ text: 'Логин уже занят', type: 'error' })
+        } else {
+          setRegisterMessage({ text: 'Ошибка регистрации. Попробуйте другой логин', type: 'error' })
+        }
+        return 'auth_error'
+      }
 
-      navigate('/')
+      setRegisterMessage({ text: 'Пользователь создан успешно!', type: 'success' })
+      setTimeout(() => navigate('/'), 1000)
       return null
     },
     null
@@ -56,6 +85,7 @@ export function LoginPage() {
     <div className="login-page">
       <div className="login-card">
         <h1>РПЛ Прогнозы</h1>
+        <p className="login-card__subtitle">Прогнозы матчей РПЛ 2026/2027</p>
 
         <div className="tabs">
           <button
@@ -73,7 +103,7 @@ export function LoginPage() {
         </div>
 
         {activeTab === 'login' ? (
-          <form action={loginFormAction}>
+          <form action={loginFormAction} key="login">
             <input
               name="username"
               type="text"
@@ -91,10 +121,14 @@ export function LoginPage() {
             <button type="submit" disabled={loginPending}>
               {loginPending ? 'Вход...' : 'Войти'}
             </button>
-            {loginState && <div className="error">{loginState}</div>}
+            {loginMessage && (
+              <div className={`login-message login-message--${loginMessage.type}`}>
+                {loginMessage.text}
+              </div>
+            )}
           </form>
         ) : (
-          <form action={registerFormAction}>
+          <form action={registerFormAction} key="register">
             <input
               name="username"
               type="text"
@@ -112,7 +146,11 @@ export function LoginPage() {
             <button type="submit" disabled={registerPending}>
               {registerPending ? 'Регистрация...' : 'Зарегистрироваться'}
             </button>
-            {registerState && <div className="error">{registerState}</div>}
+            {registerMessage && (
+              <div className={`login-message login-message--${registerMessage.type}`}>
+                {registerMessage.text}
+              </div>
+            )}
           </form>
         )}
       </div>

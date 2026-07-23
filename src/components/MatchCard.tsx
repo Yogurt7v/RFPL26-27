@@ -1,7 +1,12 @@
+import { useState, useEffect } from 'react'
 import { getTeamByName } from '../lib/teams'
 import { formatDate, formatWeekday } from '../lib/format'
+import { StarIcon } from './Icons'
+import { isFavorite, toggleFavorite, getFavorites } from '../api/favorites'
+import { useAuth } from '../hooks/useAuth'
 
 interface MatchCardProps {
+  matchId: string
   homeTeam: string
   awayTeam: string
   date: string
@@ -14,6 +19,7 @@ interface MatchCardProps {
 }
 
 export function MatchCard({
+  matchId,
   homeTeam,
   awayTeam,
   date,
@@ -24,8 +30,38 @@ export function MatchCard({
   onPredict,
   isNext = false,
 }: MatchCardProps) {
+  const { user, isLoading } = useAuth()
+  const [isFav, setIsFav] = useState(false)
+  const [favUsers, setFavUsers] = useState<string[]>([])
+  const [showFavTooltip, setShowFavTooltip] = useState(false)
+
   const home = getTeamByName(homeTeam)
   const away = getTeamByName(awayTeam)
+
+  useEffect(() => {
+    if (isLoading) return
+
+    async function load() {
+      const favorites = await getFavorites(matchId)
+      setFavUsers(favorites.map(f => f.username || 'Аноним').filter(Boolean))
+
+      if (user) {
+        const fav = await isFavorite(user.id, matchId)
+        setIsFav(fav)
+      } else {
+        setIsFav(false)
+      }
+    }
+    load()
+  }, [user, isLoading, matchId])
+
+  const handleToggleFavorite = async () => {
+    if (!user) return
+    const newState = await toggleFavorite(user.id, matchId)
+    setIsFav(newState)
+    const favorites = await getFavorites(matchId)
+    setFavUsers(favorites.map(f => f.username || 'Аноним').filter(Boolean))
+  }
 
   return (
     <div className={`match-card match-card--${status.toLowerCase()} ${isNext ? 'match-card--next' : ''}`}>
@@ -78,11 +114,38 @@ export function MatchCard({
           {status === 'FINISHED' && '✅ Завершён'}
         </span>
 
-        {status === 'SCHEDULED' && onPredict && (
-          <button className="match-card__predict-btn" onClick={onPredict}>
-            Прогноз
-          </button>
-        )}
+        <div className="match-card__actions">
+          {user && (
+            <div
+              className="match-card__fav-wrapper"
+              onMouseEnter={() => setShowFavTooltip(true)}
+              onMouseLeave={() => setShowFavTooltip(false)}
+            >
+              <button
+                className={`match-card__fav-btn ${isFav ? 'match-card__fav-btn--active' : ''}`}
+                onClick={handleToggleFavorite}
+                title={isFav ? 'Убрать из избранного' : 'Добавить в избранное'}
+              >
+                <StarIcon size={18} filled={isFav} />
+                {favUsers.length > 0 && (
+                  <span className="match-card__fav-count">{favUsers.length}</span>
+                )}
+              </button>
+
+              {showFavTooltip && favUsers.length > 0 && (
+                <div className="match-card__fav-tooltip">
+                  {favUsers.join(', ')}
+                </div>
+              )}
+            </div>
+          )}
+
+          {status === 'SCHEDULED' && onPredict && (
+            <button className="match-card__predict-btn" onClick={onPredict}>
+              Прогноз
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )

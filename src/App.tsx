@@ -7,8 +7,8 @@ import { LoginPage } from './pages/LoginPage'
 import { MatchesPage } from './pages/MatchesPage'
 import { StandingsPage } from './pages/StandingsPage'
 import { LeaderboardPage } from './pages/LeaderboardPage'
-import { MyPredictionsPage } from './pages/MyPredictionsPage'
 import { PredictPage } from './pages/PredictPage'
+import { SettingsPage } from './pages/SettingsPage'
 import './App.css'
 
 function App() {
@@ -29,7 +29,7 @@ function App() {
               <Route path="/predict/:matchId" element={<PredictPage />} />
               <Route path="/standings" element={<StandingsPage />} />
               <Route path="/leaderboard" element={<LeaderboardPage />} />
-              <Route path="/predictions" element={<MyPredictionsPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
             </Route>
           </Routes>
         </AuthProvider>
