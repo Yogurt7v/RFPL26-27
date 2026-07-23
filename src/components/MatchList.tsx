@@ -3,15 +3,22 @@ import { MatchCard } from './MatchCard'
 import { schedule, getNextMatch, getRoundByMatchId } from '../lib/schedule'
 import { rounds } from '../lib/rounds'
 import { teams } from '../lib/teams'
+import { formatDate, formatWeekday } from '../lib/format'
 import type { Match } from '../api/matches'
 
 interface MatchListProps {
   onPredict?: (matchId: string) => void
 }
 
-interface MatchGroup {
-  label: string
+interface DayGroup {
+  dateKey: string
+  dateLabel: string
   matches: Match[]
+}
+
+interface RoundGroup {
+  label: string
+  days: DayGroup[]
 }
 
 function scheduleToMatch(scheduleMatch: { id: string; round: number; homeTeam: string; awayTeam: string; date: string; time: string }): Match {
@@ -84,22 +91,27 @@ export function MatchList({ onPredict }: MatchListProps) {
   }, [selectedTeam, selectedRound])
 
   const groupedMatches = useMemo(() => {
-    const groups: MatchGroup[] = []
+    const roundMap = new Map<number, RoundGroup>()
 
     for (const match of allMatches) {
-      const roundLabel = `Тур ${match.round}`
-      const existingGroup = groups.find(g => g.label === roundLabel)
-      if (existingGroup) {
-        existingGroup.matches.push(match)
-      } else {
-        groups.push({
-          label: roundLabel,
-          matches: [match],
-        })
+      let roundGroup = roundMap.get(match.round)
+      if (!roundGroup) {
+        roundGroup = { label: `Тур ${match.round}`, days: [] }
+        roundMap.set(match.round, roundGroup)
       }
+
+      const dateKey = match.date
+      let dayGroup = roundGroup.days.find(d => d.dateKey === dateKey)
+      if (!dayGroup) {
+        const d = new Date(dateKey)
+        const dateLabel = `${formatDate(d, 'long')}, ${formatWeekday(d, 'long')}`
+        dayGroup = { dateKey, dateLabel, matches: [] }
+        roundGroup.days.push(dayGroup)
+      }
+      dayGroup.matches.push(match)
     }
 
-    return groups
+    return Array.from(roundMap.values())
   }, [allMatches])
 
   return (
@@ -149,23 +161,28 @@ export function MatchList({ onPredict }: MatchListProps) {
             groupedMatches.map(group => (
               <div key={group.label} className="match-list__group">
                 <h3 className="match-list__date-header">{group.label}</h3>
-                <div className="match-list__group-items">
-                  {group.matches.map(match => (
-                    <MatchCard
-                      key={match.id}
-                      matchId={match.id}
-                      homeTeam={match.homeTeam}
-                      awayTeam={match.awayTeam}
-                      date={match.date}
-                      time={match.time}
-                      homeScore={match.homeScore}
-                      awayScore={match.awayScore}
-                      status={match.status}
-                      isNext={match.id === nextMatchId}
-                      onPredict={onPredict ? () => onPredict(match.id) : undefined}
-                    />
-                  ))}
-                </div>
+                {group.days.map(day => (
+                  <div key={day.dateKey} className="match-list__day-group">
+                    <h4 className="match-list__day-header">{day.dateLabel}</h4>
+                    <div className="match-list__group-items">
+                      {day.matches.map(match => (
+                        <MatchCard
+                          key={match.id}
+                          matchId={match.id}
+                          homeTeam={match.homeTeam}
+                          awayTeam={match.awayTeam}
+                          date={match.date}
+                          time={match.time}
+                          homeScore={match.homeScore}
+                          awayScore={match.awayScore}
+                          status={match.status}
+                          isNext={match.id === nextMatchId}
+                          onClick={onPredict ? () => onPredict(match.id) : undefined}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             ))
           )}
