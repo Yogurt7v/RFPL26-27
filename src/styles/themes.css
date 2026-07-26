@@ -1,18 +1,18 @@
 /* Светлая тема (по умолчанию) */
 [data-theme="light"] {
-  --color-bg: #F8F9FA;
-  --color-bg-secondary: #E9ECEF;
+  --color-bg: #FFFFFF;
+  --color-bg-secondary: #F4F5F7;
   --color-bg-card: #FFFFFF;
-  --color-text: #1A1A2E;
-  --color-text-secondary: #6C757D;
-  --color-primary: #1A3A5C;
-  --color-primary-hover: #0F2640;
-  --color-primary-light: #E8EEF4;
-  --color-accent: #DC3545;
-  --color-accent-hover: #BB2D3B;
-  --color-border: #DEE2E6;
-  --color-success: #2E7D32;
-  --color-error: #DC3545;
+  --color-text: #000058;
+  --color-text-secondary: #6B7280;
+  --color-primary: #2580C3;
+  --color-primary-hover: #1D6BA3;
+  --color-primary-light: #E8F2FA;
+  --color-accent: #E6333A;
+  --color-accent-hover: #CC282F;
+  --color-border: #E5E7EB;
+  --color-success: #16A34A;
+  --color-error: #E6333A;
   --color-warning: #F59E0B;
   --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
   --card-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
@@ -23,20 +23,20 @@
 
 /* Тёмная тема */
 [data-theme="dark"] {
-  --color-bg: #0F1117;
-  --color-bg-secondary: #1A1D27;
-  --color-bg-card: #1E2130;
-  --color-text: #E8E9ED;
-  --color-text-secondary: #8B8FA3;
-  --color-primary: #5B8DBE;
-  --color-primary-hover: #7AADE0;
-  --color-primary-light: #1C2A3A;
-  --color-accent: #FF6B6B;
-  --color-accent-hover: #FF8A8A;
-  --color-border: #2A2D3A;
-  --color-success: #5CB85C;
-  --color-error: #FF6B6B;
-  --color-warning: #F5C542;
+  --color-bg: #0A0E1A;
+  --color-bg-secondary: #131829;
+  --color-bg-card: #1A2035;
+  --color-text: #E8ECF4;
+  --color-text-secondary: #7B839A;
+  --color-primary: #3B9FE8;
+  --color-primary-hover: #5CB5F0;
+  --color-primary-light: #162035;
+  --color-accent: #FF5555;
+  --color-accent-hover: #FF7777;
+  --color-border: #252B42;
+  --color-success: #22C55E;
+  --color-error: #FF5555;
+  --color-warning: #FBBF24;
   --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
   --card-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2);
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);

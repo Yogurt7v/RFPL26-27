@@ -29,15 +29,15 @@
       -45deg,
       transparent,
       transparent 36px,
-      rgba(26, 58, 92, 0.25) 36px,
-      rgba(26, 58, 92, 0.25) 52px
+      rgba(37, 128, 195, 0.25) 36px,
+      rgba(37, 128, 195, 0.25) 52px
     ),
     repeating-linear-gradient(
       -45deg,
       transparent,
       transparent 72px,
-      rgba(220, 53, 69, 0.22) 72px,
-      rgba(220, 53, 69, 0.22) 88px
+      rgba(230, 51, 58, 0.22) 72px,
+      rgba(230, 51, 58, 0.22) 88px
     ),
     var(--color-bg-card);
 }
@@ -47,11 +47,10 @@
   align-items: center;
   gap: var(--spacing-sm);
   font-size: var(--font-size-md);
-  font-weight: 400;
+  font-weight: 600;
   color: var(--color-text);
   text-decoration: none;
   letter-spacing: -0.01em;
-  text-shadow: 0 0 8px var(--color-bg-card), 0 0 16px var(--color-bg-card);
 }
 
 .header__logo:hover {
@@ -73,7 +72,7 @@
 .header__username {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
-  font-weight: 300;
+  font-weight: 400;
 }
 
 .header__logout {
@@ -144,5 +143,5 @@
 .bottom-nav__label {
   font-size: var(--font-size-xs);
   margin-top: 2px;
-  font-weight: 400;
+  font-weight: 500;
 }

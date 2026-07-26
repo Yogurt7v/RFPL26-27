@@ -5,6 +5,7 @@ import { schedule, getNextMatch, getRoundByMatchId } from '../lib/schedule'
 import { rounds } from '../lib/rounds'
 import { teams } from '../lib/teams'
 import { formatDate, formatWeekday } from '../lib/format'
+import { getMatchesByRound } from '../api/matches'
 import { useScrollToElement } from '../hooks/useScrollToElement'
 import type { Match } from '../api/matches'
 
@@ -62,6 +63,16 @@ export function MatchList({ onPredict }: MatchListProps) {
   const [selectedTeam, setSelectedTeam] = useState('')
   const [nextMatchId, setNextMatchId] = useState<string | undefined>()
   const [isLoading] = useState(false)
+  const [liveMatches, setLiveMatches] = useState<Match[]>([])
+
+  useEffect(() => {
+    if (selectedTeam) return
+    let cancelled = false
+    getMatchesByRound(selectedRound)
+      .then(data => { if (!cancelled) setLiveMatches(data) })
+      .catch(() => { if (!cancelled) setLiveMatches([]) })
+    return () => { cancelled = true }
+  }, [selectedRound, selectedTeam])
 
   useEffect(() => {
     if (!selectedTeam) {
@@ -86,13 +97,21 @@ export function MatchList({ onPredict }: MatchListProps) {
   useScrollToElement(nextMatchId ? `match-${nextMatchId}` : null)
 
   const allMatches = useMemo(() => {
-    if (selectedTeam) {
-      return getTeamMatches(selectedTeam)
-    }
-    return schedule
-      .filter(m => m.round === selectedRound)
-      .map(scheduleToMatch)
-  }, [selectedTeam, selectedRound])
+    const base = selectedTeam
+      ? getTeamMatches(selectedTeam)
+      : schedule.filter(m => m.round === selectedRound).map(scheduleToMatch)
+
+    if (liveMatches.length === 0) return base
+
+    return base.map(m => {
+      const live = liveMatches.find(l =>
+        l.homeTeam === m.homeTeam && l.awayTeam === m.awayTeam
+      )
+      return live
+        ? { ...m, homeScore: live.homeScore, awayScore: live.awayScore, status: live.status }
+        : m
+    })
+  }, [selectedTeam, selectedRound, liveMatches])
 
   const groupedMatches = useMemo(() => {
     const roundMap = new Map<number, RoundGroup>()
