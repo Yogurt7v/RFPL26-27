@@ -20,6 +20,7 @@ interface PredictionFormProps {
   initialValues?: PredictionFormData | null
   onSubmit: (prediction: PredictionFormData) => Promise<boolean>
   onSaved?: () => void
+  canEdit?: boolean
 }
 
 type ActiveStep = 'outcome' | 'score' | 'goals' | null
@@ -37,6 +38,7 @@ export function PredictionForm({
   initialValues,
   onSubmit,
   onSaved,
+  canEdit = false,
 }: PredictionFormProps) {
   const [activeStep, setActiveStep] = useState<ActiveStep>('outcome')
   const [homeScore, setHomeScore] = useState<number | ''>(initialValues?.predictedHomeScore ?? '')
@@ -159,6 +161,11 @@ export function PredictionForm({
 
         {onSaved && (
           <div className="check__footer">
+            {canEdit && (
+              <button type="button" className="check__submit check__submit--edit" onClick={() => setIsSaved(false)}>
+                Изменить прогноз
+              </button>
+            )}
             <button type="button" className="check__submit" onClick={onSaved}>На главную</button>
           </div>
         )}

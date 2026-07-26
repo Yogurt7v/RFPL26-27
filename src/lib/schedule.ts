@@ -7,6 +7,11 @@ export interface ScheduleMatch {
   time: string
 }
 
+export function isMatchOpen(match: ScheduleMatch): boolean {
+  const matchStart = new Date(`${match.date}T${match.time}:00+03:00`)
+  return Date.now() < matchStart.getTime()
+}
+
 export const schedule: ScheduleMatch[] = [
   { id: '1-1', round: 1, homeTeam: 'ЦСКА Москва', awayTeam: 'Балтика', date: '2026-07-24', time: '20:00' },
   { id: '1-2', round: 1, homeTeam: 'Динамо Москва', awayTeam: 'Крылья Советов', date: '2026-07-25', time: '14:00' },

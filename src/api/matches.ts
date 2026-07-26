@@ -1,10 +1,5 @@
 import { getTeamBySoccer365Id } from '../lib/teams'
 
-function stripScripts(html: string): string {
-  return html.replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<noscript[\s\S]*?<\/noscript>/gi, '')
-}
-
 export interface Match {
   id: string
   round: number
@@ -16,6 +11,13 @@ export interface Match {
   time: string
   status: 'SCHEDULED' | 'LIVE' | 'FINISHED'
   stadium?: string
+}
+
+// ── Soccer365 HTML parsing ──────────────────────────────────────────
+
+function stripScripts(html: string): string {
+  return html.replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, '')
 }
 
 function parseDate(dateStr: string): string {
@@ -39,11 +41,8 @@ function parseGameBlock(block: string, roundNumber: number): Match | null {
   const atIdMatch = block.match(/dt-at="(\d+)"/)
   if (!htIdMatch || !atIdMatch) return null
 
-  const homeTeam365Id = parseInt(htIdMatch[1])
-  const awayTeam365Id = parseInt(atIdMatch[1])
-
-  const home = getTeamBySoccer365Id(homeTeam365Id)
-  const away = getTeamBySoccer365Id(awayTeam365Id)
+  const home = getTeamBySoccer365Id(parseInt(htIdMatch[1]))
+  const away = getTeamBySoccer365Id(parseInt(atIdMatch[1]))
   if (!home || !away) return null
 
   const stadiumMatch = block.match(/"name":"([^"]+)"/)
@@ -127,48 +126,122 @@ function parseMatchesFromHTML(html: string): Match[] {
   return matches
 }
 
-let cachedResults: Match[] | null = null
-let cachedSchedule: Match[] | null = null
+// ── Soccer365 fetch + cache ─────────────────────────────────────────
+
+const RESULTS_CACHE_KEY = 'rfpl_results'
+const SCHEDULE_CACHE_KEY = 'rfpl_schedule'
+const CACHE_TTL = 5 * 60 * 1000
+
+interface CachedMatches {
+  data: Match[]
+  timestamp: number
+}
+
+function readCache(key: string): Match[] | null {
+  try {
+    const raw = localStorage.getItem(key)
+    if (!raw) return null
+    const { data, timestamp } = JSON.parse(raw) as CachedMatches
+    if (Date.now() - timestamp < CACHE_TTL) return data
+    return null
+  } catch {
+    return null
+  }
+}
+
+function readStaleCache(key: string): Match[] | null {
+  try {
+    const raw = localStorage.getItem(key)
+    if (!raw) return null
+    const { data } = JSON.parse(raw) as CachedMatches
+    return data
+  } catch {
+    return null
+  }
+}
+
+function writeCache(key: string, data: Match[]) {
+  try {
+    localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }))
+  } catch {
+    // localStorage full or unavailable
+  }
+}
+
+let memResults: Match[] | null = null
+let memSchedule: Match[] | null = null
 
 async function fetchResults(): Promise<Match[]> {
-  if (cachedResults) return cachedResults
+  if (memResults) return memResults
+
+  const fresh = readCache(RESULTS_CACHE_KEY)
+  if (fresh) {
+    memResults = fresh
+    return fresh
+  }
+
   try {
     const response = await fetch('/api/soccer365/competitions/13/results/')
     const html = stripScripts(await response.text())
-    cachedResults = parseMatchesFromHTML(html)
-    return cachedResults
+    const data = parseMatchesFromHTML(html)
+    memResults = data
+    writeCache(RESULTS_CACHE_KEY, data)
+    return data
   } catch (error) {
     console.error('Error fetching results:', error)
+    const stale = readStaleCache(RESULTS_CACHE_KEY)
+    if (stale) {
+      memResults = stale
+      return stale
+    }
     return []
   }
 }
 
 async function fetchSchedule(): Promise<Match[]> {
-  if (cachedSchedule) return cachedSchedule
+  if (memSchedule) return memSchedule
+
+  const fresh = readCache(SCHEDULE_CACHE_KEY)
+  if (fresh) {
+    memSchedule = fresh
+    return fresh
+  }
+
   try {
     const response = await fetch('/api/soccer365/competitions/13/shedule/')
     const html = stripScripts(await response.text())
-    cachedSchedule = parseMatchesFromHTML(html)
-    return cachedSchedule
+    const data = parseMatchesFromHTML(html)
+    memSchedule = data
+    writeCache(SCHEDULE_CACHE_KEY, data)
+    return data
   } catch (error) {
     console.error('Error fetching schedule:', error)
+    const stale = readStaleCache(SCHEDULE_CACHE_KEY)
+    if (stale) {
+      memSchedule = stale
+      return stale
+    }
     return []
   }
+}
+
+// ── Public API ──────────────────────────────────────────────────────
+
+export function preloadAllMatches(): void {
+  fetchResults()
+  fetchSchedule()
 }
 
 export async function getMatchesByRound(roundNumber: number): Promise<Match[]> {
   const [results, schedule] = await Promise.all([fetchResults(), fetchSchedule()])
 
-  const roundResults = results.filter(m => m.round === roundNumber)
-  const roundSchedule = schedule.filter(m => m.round === roundNumber)
-
   const merged = new Map<string, Match>()
 
-  for (const m of roundSchedule) {
+  for (const m of schedule.filter(m => m.round === roundNumber)) {
     merged.set(`${m.homeTeam}-${m.awayTeam}`, m)
   }
 
-  for (const m of roundResults) {
+  for (const m of results.filter(m => m.round === roundNumber)) {
     merged.set(`${m.homeTeam}-${m.awayTeam}`, m)
   }
 

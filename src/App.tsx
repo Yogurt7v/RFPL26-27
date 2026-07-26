@@ -5,6 +5,7 @@ import { ThemeProvider } from './context/ThemeContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { Layout } from './components/Layout'
 import { Spinner } from './components/Spinner'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import './App.css'
 
 const LoginPage = lazy(() => import('./pages/LoginPage'))
@@ -14,33 +15,61 @@ const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'))
 const PredictPage = lazy(() => import('./pages/PredictPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 
+const pageFallback = (
+  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+    <Spinner />
+  </div>
+)
+
 function App() {
   return (
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
-          <Suspense fallback={
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-              <Spinner />
-            </div>
-          }>
-            <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              <Route
-                element={
-                  <ProtectedRoute>
-                    <Layout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route path="/" element={<MatchesPage />} />
-                <Route path="/predict/:matchId" element={<PredictPage />} />
-                <Route path="/standings" element={<StandingsPage />} />
-                <Route path="/leaderboard" element={<LeaderboardPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-              </Route>
-            </Routes>
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={pageFallback}>
+              <Routes>
+                <Route path="/login" element={
+                  <ErrorBoundary>
+                    <LoginPage />
+                  </ErrorBoundary>
+                } />
+                <Route
+                  element={
+                    <ProtectedRoute>
+                      <Layout />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route path="/" element={
+                    <ErrorBoundary>
+                      <MatchesPage />
+                    </ErrorBoundary>
+                  } />
+                  <Route path="/predict/:matchId" element={
+                    <ErrorBoundary>
+                      <PredictPage />
+                    </ErrorBoundary>
+                  } />
+                  <Route path="/standings" element={
+                    <ErrorBoundary>
+                      <StandingsPage />
+                    </ErrorBoundary>
+                  } />
+                  <Route path="/leaderboard" element={
+                    <ErrorBoundary>
+                      <LeaderboardPage />
+                    </ErrorBoundary>
+                  } />
+                  <Route path="/settings" element={
+                    <ErrorBoundary>
+                      <SettingsPage />
+                    </ErrorBoundary>
+                  } />
+                </Route>
+              </Routes>
+            </Suspense>
+          </ErrorBoundary>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

@@ -7,7 +7,10 @@ import { teams } from '../lib/teams'
 import { formatDate, formatWeekday } from '../lib/format'
 import { useScrollToElement } from '../hooks/useScrollToElement'
 import { useLiveMatches } from '../hooks/useLiveMatches'
+import { useAuth } from '../hooks/useAuth'
+import { getFavoritesForMatches, getUserFavoriteIds } from '../api/favorites'
 import type { Match } from '../api/matches'
+import type { Favorite } from '../api/favorites'
 
 interface MatchListProps {
   onPredict?: (matchId: string) => void
@@ -59,11 +62,14 @@ function findNextMatchForTeam(teamName: string): string | undefined {
 }
 
 export function MatchList({ onPredict }: MatchListProps) {
+  const { user } = useAuth()
   const [selectedRound, setSelectedRound] = useState(1)
   const [selectedTeam, setSelectedTeam] = useState('')
   const [nextMatchId, setNextMatchId] = useState<string | undefined>()
   const [isLoading] = useState(false)
   const liveMatches = useLiveMatches(selectedRound, selectedTeam)
+  const [favoritesMap, setFavoritesMap] = useState<Map<string, Favorite[]>>(new Map())
+  const [userFavIds, setUserFavIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (!selectedTeam) {
@@ -103,6 +109,45 @@ export function MatchList({ onPredict }: MatchListProps) {
         : m
     })
   }, [selectedTeam, selectedRound, liveMatches])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      const matchIds = allMatches.map(m => m.id)
+      if (matchIds.length === 0) return
+
+      const [favMap, favIds] = await Promise.all([
+        getFavoritesForMatches(matchIds),
+        user ? getUserFavoriteIds(user.id, matchIds) : Promise.resolve(new Set<string>()),
+      ])
+
+      if (!cancelled) {
+        setFavoritesMap(favMap)
+        setUserFavIds(favIds)
+      }
+    }
+
+    load()
+    return () => { cancelled = true }
+  }, [allMatches, user])
+
+  const handleFavoritesChanged = (matchId: string, favorites: Favorite[], isFav: boolean) => {
+    setFavoritesMap(prev => {
+      const next = new Map(prev)
+      next.set(matchId, favorites)
+      return next
+    })
+    setUserFavIds(prev => {
+      const next = new Set(prev)
+      if (isFav) {
+        next.add(matchId)
+      } else {
+        next.delete(matchId)
+      }
+      return next
+    })
+  }
 
   const groupedMatches = useMemo(() => {
     const roundMap = new Map<number, RoundGroup>()
@@ -193,6 +238,9 @@ export function MatchList({ onPredict }: MatchListProps) {
                           isNext={match.id === nextMatchId}
                           id={match.id === nextMatchId ? `match-${match.id}` : undefined}
                           onClick={onPredict ? () => onPredict(match.id) : undefined}
+                          favorites={favoritesMap.get(match.id) || []}
+                          isFav={userFavIds.has(match.id)}
+                          onFavoritesChanged={handleFavoritesChanged}
                         />
                       ))}
                     </div>

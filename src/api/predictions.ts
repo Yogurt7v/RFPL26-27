@@ -25,7 +25,40 @@ export interface PredictionData {
   goalsThreshold: number | null
 }
 
-async function findMatchId(homeTeam: string, awayTeam: string, round: number): Promise<number | null> {
+export async function getPredictionForMatch(
+  userId: string,
+  homeTeam: string,
+  awayTeam: string,
+  round: number
+): Promise<PredictionData | null> {
+  const { data } = await supabase
+    .from('predictions')
+    .select(`
+      predicted_home_score,
+      predicted_away_score,
+      outcome,
+      goals_team,
+      goals_threshold,
+      matches!inner (id)
+    `)
+    .eq('user_id', userId)
+    .eq('matches.home_team', homeTeam)
+    .eq('matches.away_team', awayTeam)
+    .eq('matches.round', round)
+    .maybeSingle()
+
+  if (!data) return null
+
+  return {
+    predictedHomeScore: data.predicted_home_score as number | null,
+    predictedAwayScore: data.predicted_away_score as number | null,
+    outcome: data.outcome as string | null,
+    goalsTeam: data.goals_team as string | null,
+    goalsThreshold: data.goals_threshold as number | null,
+  }
+}
+
+export async function findMatchId(homeTeam: string, awayTeam: string, round: number): Promise<number | null> {
   const { data } = await supabase
     .from('matches')
     .select('id')
@@ -68,33 +101,6 @@ export async function savePrediction(
   }
 
   return true
-}
-
-export async function getPredictionForMatch(
-  userId: string,
-  homeTeam: string,
-  awayTeam: string,
-  round: number
-): Promise<PredictionData | null> {
-  const matchId = await findMatchId(homeTeam, awayTeam, round)
-  if (matchId == null) return null
-
-  const { data } = await supabase
-    .from('predictions')
-    .select('predicted_home_score, predicted_away_score, outcome, goals_team, goals_threshold')
-    .eq('user_id', userId)
-    .eq('match_id', matchId)
-    .maybeSingle()
-
-  if (!data) return null
-
-  return {
-    predictedHomeScore: data.predicted_home_score as number | null,
-    predictedAwayScore: data.predicted_away_score as number | null,
-    outcome: data.outcome as string | null,
-    goalsTeam: data.goals_team as string | null,
-    goalsThreshold: data.goals_threshold as number | null,
-  }
 }
 
 export async function getUserPredictions(userId: string): Promise<UserPrediction[]> {
@@ -145,4 +151,59 @@ export async function getUserPredictions(userId: string): Promise<UserPrediction
       pointsEarned: (row.points_earned as number) || 0,
     }
   })
+}
+
+export interface OtherPrediction {
+  username: string
+  predictedHomeScore: number | null
+  predictedAwayScore: number | null
+  outcome: string | null
+  goalsTeam: string | null
+  goalsThreshold: number | null
+}
+
+export interface MatchPredictionsInfo {
+  count: number
+  usernames: string[]
+  predictions: OtherPrediction[]
+}
+
+export async function getMatchOtherPredictions(
+  matchId: number,
+  currentUserId: string
+): Promise<MatchPredictionsInfo> {
+  const { data, error } = await supabase
+    .from('predictions')
+    .select(`
+      predicted_home_score,
+      predicted_away_score,
+      outcome,
+      goals_team,
+      goals_threshold,
+      users!inner (username)
+    `)
+    .eq('match_id', matchId)
+    .neq('user_id', currentUserId)
+
+  if (error || !data) {
+    return { count: 0, usernames: [], predictions: [] }
+  }
+
+  const predictions: OtherPrediction[] = data.map((row: Record<string, unknown>) => {
+    const u = row.users as Record<string, unknown> | null
+    return {
+      username: (u?.username as string) || 'Аноним',
+      predictedHomeScore: row.predicted_home_score as number | null,
+      predictedAwayScore: row.predicted_away_score as number | null,
+      outcome: row.outcome as string | null,
+      goalsTeam: row.goals_team as string | null,
+      goalsThreshold: row.goals_threshold as number | null,
+    }
+  })
+
+  return {
+    count: predictions.length,
+    usernames: predictions.map(p => p.username),
+    predictions,
+  }
 }

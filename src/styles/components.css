@@ -983,12 +983,63 @@
   font-weight: 300;
 }
 
+.check__submit--edit {
+  background: var(--color-bg-card);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  flex: 1;
+}
+
+.check__submit--edit + .check__submit {
+  flex: 1;
+}
+
 .check__winnings-value {
   font-size: var(--font-size-2xl);
   font-weight: 500;
   color: var(--color-success);
   font-variant-numeric: tabular-nums;
   margin-top: var(--spacing-xs);
+}
+
+.check__others {
+  overflow-x: auto;
+}
+
+.check__others-header {
+  display: grid;
+  grid-template-columns: 1fr 60px 70px 1fr;
+  gap: 4px;
+  padding: 8px 16px;
+  font-size: var(--font-size-xs);
+  color: var(--color-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.check__others-row {
+  display: grid;
+  grid-template-columns: 1fr 60px 70px 1fr;
+  gap: 4px;
+  padding: 10px 16px;
+  font-size: var(--font-size-sm);
+  border-bottom: 1px dashed var(--color-border);
+  font-variant-numeric: tabular-nums;
+}
+
+.check__others-row:last-child {
+  border-bottom: none;
+}
+
+.check__others-cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.check__others-cell:first-child {
+  font-weight: 600;
 }
 
 /* Standings Table (Betting Slip) */

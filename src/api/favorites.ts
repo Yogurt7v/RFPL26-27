@@ -41,59 +41,68 @@ export async function toggleFavorite(
   }
 }
 
-export async function getFavorites(matchId: string): Promise<Favorite[]> {
+export async function getFavoritesForMatches(
+  matchIds: string[]
+): Promise<Map<string, Favorite[]>> {
+  const result = new Map<string, Favorite[]>()
+
+  if (matchIds.length === 0) return result
+
   const { data, error } = await supabase
     .from('favorites')
     .select('id, user_id, match_id')
-    .eq('match_id', matchId)
+    .in('match_id', matchIds)
 
-  if (error) {
-    console.error('Error fetching favorites:', error)
-    return []
-  }
+  if (error || !data || data.length === 0) return result
 
-  if (!data || data.length === 0) return []
-
-  const userIds = data.map((r: Record<string, unknown>) => r.user_id as string)
+  const userIds = [...new Set(data.map((r: Record<string, unknown>) => r.user_id as string))]
 
   let userMap = new Map<string, string>()
-  try {
-    const { data: users } = await supabase
-      .from('users')
-      .select('id, username')
-      .in('id', userIds)
+  if (userIds.length > 0) {
+    try {
+      const { data: users } = await supabase
+        .from('users')
+        .select('id, username')
+        .in('id', userIds)
 
-    if (users) {
-      for (const u of users as Array<{ id: string; username: string }>) {
-        userMap.set(u.id, u.username)
+      if (users) {
+        for (const u of users as Array<{ id: string; username: string }>) {
+          userMap.set(u.id, u.username)
+        }
       }
+    } catch {
+      // usernames останутся "Аноним"
     }
-  } catch {
-    // usernames останутся "Аноним"
   }
 
-  return data.map((row: Record<string, unknown>) => ({
-    id: row.id as number,
-    userId: row.user_id as string,
-    matchId: row.match_id as string,
-    username: userMap.get(row.user_id as string) || 'Аноним',
-  }))
+  for (const row of data as Array<Record<string, unknown>>) {
+    const matchId = row.match_id as string
+    if (!result.has(matchId)) result.set(matchId, [])
+
+    result.get(matchId)!.push({
+      id: row.id as number,
+      userId: row.user_id as string,
+      matchId,
+      username: userMap.get(row.user_id as string) || 'Аноним',
+    })
+  }
+
+  return result
 }
 
-export async function isFavorite(
+export async function getUserFavoriteIds(
   userId: string,
-  matchId: string
-): Promise<boolean> {
+  matchIds: string[]
+): Promise<Set<string>> {
+  if (matchIds.length === 0) return new Set()
+
   const { data, error } = await supabase
     .from('favorites')
-    .select('id')
+    .select('match_id')
     .eq('user_id', userId)
-    .eq('match_id', matchId)
-    .maybeSingle()
+    .in('match_id', matchIds)
 
-  if (error) {
-    console.error('Error checking favorite:', error)
-    return false
-  }
-  return !!data
+  if (error || !data) return new Set()
+
+  return new Set(data.map((r: Record<string, unknown>) => r.match_id as string))
 }

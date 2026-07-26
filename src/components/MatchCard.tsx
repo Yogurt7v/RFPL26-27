@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { getTeamByName } from '../lib/teams'
 import { formatDate, formatWeekday } from '../lib/format'
 import { StarIcon } from './Icons'
-import { isFavorite, toggleFavorite, getFavorites } from '../api/favorites'
+import { toggleFavorite, getFavoritesForMatches } from '../api/favorites'
 import { useAuth } from '../hooks/useAuth'
+import type { Favorite } from '../api/favorites'
 
 interface MatchCardProps {
   matchId: string
@@ -17,6 +18,9 @@ interface MatchCardProps {
   onClick?: () => void
   isNext?: boolean
   id?: string
+  favorites: Favorite[]
+  isFav: boolean
+  onFavoritesChanged: (matchId: string, favorites: Favorite[], isFav: boolean) => void
 }
 
 export function MatchCard({
@@ -31,51 +35,33 @@ export function MatchCard({
   onClick,
   isNext = false,
   id,
+  favorites,
+  isFav,
+  onFavoritesChanged,
 }: MatchCardProps) {
-  const { user, isLoading } = useAuth()
-  const [isFav, setIsFav] = useState(false)
-  const [favUsers, setFavUsers] = useState<string[]>([])
+  const { user } = useAuth()
   const [showFavTooltip, setShowFavTooltip] = useState(false)
 
   const home = getTeamByName(homeTeam)
   const away = getTeamByName(awayTeam)
 
-  useEffect(() => {
-    if (isLoading) return
-    let cancelled = false
-
-    async function load() {
-      try {
-        const [favorites, fav] = await Promise.all([
-          getFavorites(matchId),
-          user ? isFavorite(user.id, matchId) : Promise.resolve(false),
-        ])
-        if (cancelled) return
-        setFavUsers(favorites.map(f => f.username || 'Аноним').filter(Boolean))
-        setIsFav(fav)
-      } catch (err) {
-        console.error('Error loading favorites:', err)
-      }
-    }
-    load()
-    return () => { cancelled = true }
-  }, [user, isLoading, matchId])
+  const favUsers = favorites.map(f => f.username || 'Аноним').filter(Boolean)
 
   const handleToggleFavorite = async () => {
     if (!user) return
     const newState = await toggleFavorite(user.id, matchId)
-    setIsFav(newState)
-    const favorites = await getFavorites(matchId)
-    setFavUsers(favorites.map(f => f.username || 'Аноним').filter(Boolean))
+
+    const map = await getFavoritesForMatches([matchId])
+    const updated = map.get(matchId) || []
+
+    onFavoritesChanged(matchId, updated, newState)
   }
 
   return (
     <div
       id={id}
       className={`match-card match-card--${status.toLowerCase()} ${isNext ? 'match-card--next' : ''}`}
-      onClick={onClick}
-      role={onClick ? 'button' : undefined}
-      tabIndex={onClick ? 0 : undefined}
+      {...(onClick ? { onClick, role: 'button' as const, tabIndex: 0 } : {})}
     >
       {home?.logoLarge && (
         <img className="match-card__watermark match-card__watermark--home" src={home.logoLarge} alt="" />
@@ -116,9 +102,7 @@ export function MatchCard({
 
       <div className="match-card__footer">
         <span className="match-card__status">
-          {/*{status === 'SCHEDULED' && 'Запланирован'}*/}
           {status === 'LIVE' && 'Идёт'}
-          {/*{status === 'FINISHED' && 'Завершён'}*/}
         </span>
 
         {user && (
