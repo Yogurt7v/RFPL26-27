@@ -5,8 +5,8 @@ import { schedule, getNextMatch, getRoundByMatchId } from '../lib/schedule'
 import { rounds } from '../lib/rounds'
 import { teams } from '../lib/teams'
 import { formatDate, formatWeekday } from '../lib/format'
-import { getMatchesByRound } from '../api/matches'
 import { useScrollToElement } from '../hooks/useScrollToElement'
+import { useLiveMatches } from '../hooks/useLiveMatches'
 import type { Match } from '../api/matches'
 
 interface MatchListProps {
@@ -63,16 +63,7 @@ export function MatchList({ onPredict }: MatchListProps) {
   const [selectedTeam, setSelectedTeam] = useState('')
   const [nextMatchId, setNextMatchId] = useState<string | undefined>()
   const [isLoading] = useState(false)
-  const [liveMatches, setLiveMatches] = useState<Match[]>([])
-
-  useEffect(() => {
-    if (selectedTeam) return
-    let cancelled = false
-    getMatchesByRound(selectedRound)
-      .then(data => { if (!cancelled) setLiveMatches(data) })
-      .catch(() => { if (!cancelled) setLiveMatches([]) })
-    return () => { cancelled = true }
-  }, [selectedRound, selectedTeam])
+  const liveMatches = useLiveMatches(selectedRound, selectedTeam)
 
   useEffect(() => {
     if (!selectedTeam) {
