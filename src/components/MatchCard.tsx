@@ -113,9 +113,9 @@ export function MatchCard({
 
       <div className="match-card__footer">
         <span className="match-card__status">
-          {status === 'SCHEDULED' && 'Запланирован'}
+          {/*{status === 'SCHEDULED' && 'Запланирован'}*/}
           {status === 'LIVE' && 'Идёт'}
-          {status === 'FINISHED' && 'Завершён'}
+          {/*{status === 'FINISHED' && 'Завершён'}*/}
         </span>
 
         {user && (

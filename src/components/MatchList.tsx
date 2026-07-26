@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { MatchCard } from './MatchCard'
+import { Spinner } from './Spinner'
 import { schedule, getNextMatch, getRoundByMatchId } from '../lib/schedule'
 import { rounds } from '../lib/rounds'
 import { teams } from '../lib/teams'
@@ -148,7 +149,7 @@ export function MatchList({ onPredict }: MatchListProps) {
       </div>
 
       {isLoading ? (
-        <div className="match-list__loading">Загрузка матчей...</div>
+        <div className="match-list__loading"><Spinner /></div>
       ) : (
         <div className="match-list__grid">
           {groupedMatches.length === 0 ? (

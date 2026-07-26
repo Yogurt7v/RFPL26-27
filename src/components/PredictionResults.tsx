@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { getUserPredictions, type UserPrediction } from '../api/predictions'
 import { getTeamByName } from '../lib/teams'
 import { formatScore, formatDate } from '../lib/format'
+import { Spinner } from './Spinner'
 
 interface PredictionResultsProps {
   userId: string
@@ -32,7 +33,7 @@ export function PredictionResults({ userId }: PredictionResultsProps) {
   }, [userId])
 
   if (isLoading) {
-    return <div className="prediction-results">Загрузка...</div>
+    return <div className="prediction-results"><Spinner /></div>
   }
 
   if (error) {
@@ -44,10 +45,11 @@ export function PredictionResults({ userId }: PredictionResultsProps) {
   return (
     <div className="prediction-results">
       <div className="prediction-results__header">
-        <h2>Мои прогнозы</h2>
-        <div className="prediction-results__total">
-          Всего очков: <strong>{totalPoints}</strong>
-        </div>
+        <span className="prediction-results__title">Мои прогнозы</span>
+      </div>
+
+      <div className="prediction-results__total">
+        Всего очков: <strong>{totalPoints}</strong>
       </div>
 
       <table className="prediction-results__table">
@@ -55,7 +57,7 @@ export function PredictionResults({ userId }: PredictionResultsProps) {
           <tr>
             <th className="prediction-results__th">Матч</th>
             <th className="prediction-results__th">Дата</th>
-            <th className="prediction-results__th">Мой прогноз</th>
+            <th className="prediction-results__th">Прогноз</th>
             <th className="prediction-results__th">Результат</th>
             <th className="prediction-results__th prediction-results__th--pts">Очки</th>
           </tr>
@@ -98,6 +100,8 @@ export function PredictionResults({ userId }: PredictionResultsProps) {
           })}
         </tbody>
       </table>
+
+      <div className="prediction-results__zigzag" />
     </div>
   )
 }

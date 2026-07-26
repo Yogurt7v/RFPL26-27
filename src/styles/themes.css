@@ -44,6 +44,20 @@
   --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.5);
 }
 
+/* Dark theme component overrides */
+[data-theme="dark"] .check__winnings {
+  background: linear-gradient(135deg, #1a3a2a 0%, #1a3020 100%);
+  border-color: var(--color-success);
+}
+
+[data-theme="dark"] .check__winnings-label {
+  color: var(--color-success);
+}
+
+[data-theme="dark"] .check__winnings-value {
+  color: var(--color-success);
+}
+
 /* Размеры шрифта */
 [data-font-size="1"] {
   --font-size-base: 12px;

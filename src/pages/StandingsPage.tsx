@@ -7,3 +7,5 @@ export function StandingsPage() {
     </div>
   )
 }
+
+export default StandingsPage

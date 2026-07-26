@@ -17,6 +17,86 @@ export interface UserPrediction {
   pointsEarned: number
 }
 
+export interface PredictionData {
+  predictedHomeScore: number | null
+  predictedAwayScore: number | null
+  outcome: string | null
+  goalsTeam: string | null
+  goalsThreshold: number | null
+}
+
+async function findMatchId(homeTeam: string, awayTeam: string, round: number): Promise<number | null> {
+  const { data } = await supabase
+    .from('matches')
+    .select('id')
+    .eq('home_team', homeTeam)
+    .eq('away_team', awayTeam)
+    .eq('round', round)
+    .single()
+
+  return data?.id ?? null
+}
+
+export async function savePrediction(
+  userId: string,
+  homeTeam: string,
+  awayTeam: string,
+  round: number,
+  prediction: PredictionData
+): Promise<boolean> {
+  const matchId = await findMatchId(homeTeam, awayTeam, round)
+  if (matchId == null) {
+    console.error('Match not found in Supabase:', homeTeam, 'vs', awayTeam, 'round', round)
+    return false
+  }
+
+  const { error } = await supabase
+    .from('predictions')
+    .upsert({
+      user_id: userId,
+      match_id: matchId,
+      predicted_home_score: prediction.predictedHomeScore,
+      predicted_away_score: prediction.predictedAwayScore,
+      outcome: prediction.outcome,
+      goals_team: prediction.goalsTeam,
+      goals_threshold: prediction.goalsThreshold,
+    }, { onConflict: 'user_id,match_id' })
+
+  if (error) {
+    console.error('Error saving prediction:', error)
+    return false
+  }
+
+  return true
+}
+
+export async function getPredictionForMatch(
+  userId: string,
+  homeTeam: string,
+  awayTeam: string,
+  round: number
+): Promise<PredictionData | null> {
+  const matchId = await findMatchId(homeTeam, awayTeam, round)
+  if (matchId == null) return null
+
+  const { data } = await supabase
+    .from('predictions')
+    .select('predicted_home_score, predicted_away_score, outcome, goals_team, goals_threshold')
+    .eq('user_id', userId)
+    .eq('match_id', matchId)
+    .maybeSingle()
+
+  if (!data) return null
+
+  return {
+    predictedHomeScore: data.predicted_home_score as number | null,
+    predictedAwayScore: data.predicted_away_score as number | null,
+    outcome: data.outcome as string | null,
+    goalsTeam: data.goals_team as string | null,
+    goalsThreshold: data.goals_threshold as number | null,
+  }
+}
+
 export async function getUserPredictions(userId: string): Promise<UserPrediction[]> {
   const { data, error } = await supabase
     .from('predictions')

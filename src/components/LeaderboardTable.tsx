@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
 import { getLeaderboard, type LeaderboardEntry } from '../api/leaderboard'
+import { Spinner } from './Spinner'
 
 interface LeaderboardTableProps {
   currentUserId?: string
 }
+
+const MEDALS = ['🥇', '🥈', '🥉']
 
 export function LeaderboardTable({ currentUserId }: LeaderboardTableProps) {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
@@ -30,16 +33,18 @@ export function LeaderboardTable({ currentUserId }: LeaderboardTableProps) {
   }, [])
 
   if (isLoading) {
-    return <div className="leaderboard-table">Загрузка...</div>
+    return <div className="leaderboard-table"><Spinner /></div>
   }
 
   if (error) {
-    return <div className="leaderboard-table leaderboard-table--error">{error}</div>
+    return <div className="leaderboard-table" style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>{error}</div>
   }
 
   return (
     <div className="leaderboard-table">
-      <h2>Таблица лидеров</h2>
+      <div className="leaderboard-table__header">
+        <span className="leaderboard-table__title">Таблица лидеров</span>
+      </div>
 
       <table className="leaderboard-table__table">
         <thead>
@@ -48,8 +53,8 @@ export function LeaderboardTable({ currentUserId }: LeaderboardTableProps) {
             <th className="leaderboard-table__th leaderboard-table__th--user">Игрок</th>
             <th className="leaderboard-table__th leaderboard-table__th--pts">Очки</th>
             <th className="leaderboard-table__th">Прогнозы</th>
-            <th className="leaderboard-table__th">Точные счёта</th>
-            <th className="leaderboard-table__th">Угаданные исходы</th>
+            <th className="leaderboard-table__th">Точные</th>
+            <th className="leaderboard-table__th">Исходы</th>
           </tr>
         </thead>
         <tbody>
@@ -61,7 +66,11 @@ export function LeaderboardTable({ currentUserId }: LeaderboardTableProps) {
               }`}
             >
               <td className="leaderboard-table__td leaderboard-table__td--pos">
-                {index + 1}
+                {index < 3 ? (
+                  <span className="leaderboard-table__medal">{MEDALS[index]}</span>
+                ) : (
+                  index + 1
+                )}
               </td>
               <td className="leaderboard-table__td leaderboard-table__td--user">
                 {entry.username}
@@ -76,6 +85,8 @@ export function LeaderboardTable({ currentUserId }: LeaderboardTableProps) {
           ))}
         </tbody>
       </table>
+
+      <div className="leaderboard-table__zigzag" />
     </div>
   )
 }
