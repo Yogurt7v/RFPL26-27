@@ -5,6 +5,7 @@ import { schedule, getNextMatch, getRoundByMatchId } from '../lib/schedule'
 import { rounds } from '../lib/rounds'
 import { teams } from '../lib/teams'
 import { formatDate, formatWeekday } from '../lib/format'
+import { useScrollToElement } from '../hooks/useScrollToElement'
 import type { Match } from '../api/matches'
 
 interface MatchListProps {
@@ -81,6 +82,8 @@ export function MatchList({ onPredict }: MatchListProps) {
       setNextMatchId(nextForTeam)
     }
   }, [selectedTeam])
+
+  useScrollToElement(nextMatchId ? `match-${nextMatchId}` : null)
 
   const allMatches = useMemo(() => {
     if (selectedTeam) {
@@ -178,6 +181,7 @@ export function MatchList({ onPredict }: MatchListProps) {
                           awayScore={match.awayScore}
                           status={match.status}
                           isNext={match.id === nextMatchId}
+                          id={match.id === nextMatchId ? `match-${match.id}` : undefined}
                           onClick={onPredict ? () => onPredict(match.id) : undefined}
                         />
                       ))}

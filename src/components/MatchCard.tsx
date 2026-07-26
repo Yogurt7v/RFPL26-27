@@ -16,6 +16,7 @@ interface MatchCardProps {
   status: 'SCHEDULED' | 'LIVE' | 'FINISHED'
   onClick?: () => void
   isNext?: boolean
+  id?: string
 }
 
 export function MatchCard({
@@ -29,6 +30,7 @@ export function MatchCard({
   status,
   onClick,
   isNext = false,
+  id,
 }: MatchCardProps) {
   const { user, isLoading } = useAuth()
   const [isFav, setIsFav] = useState(false)
@@ -69,6 +71,7 @@ export function MatchCard({
 
   return (
     <div
+      id={id}
       className={`match-card match-card--${status.toLowerCase()} ${isNext ? 'match-card--next' : ''}`}
       onClick={onClick}
       role={onClick ? 'button' : undefined}
