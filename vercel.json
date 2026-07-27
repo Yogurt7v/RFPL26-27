@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/soccer365/:path*",
+      "destination": "https://soccer365.ru/:path*"
+    }
+  ]
+}

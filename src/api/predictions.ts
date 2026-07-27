@@ -10,8 +10,8 @@ export interface UserPrediction {
   predictedHomeScore: number | null
   predictedAwayScore: number | null
   outcome: string | null
-  goalsTeam: string | null
-  goalsThreshold: number | null
+  homeGoalsThreshold: number | null
+  awayGoalsThreshold: number | null
   actualHomeScore: number | null
   actualAwayScore: number | null
   pointsEarned: number
@@ -21,8 +21,8 @@ export interface PredictionData {
   predictedHomeScore: number | null
   predictedAwayScore: number | null
   outcome: string | null
-  goalsTeam: string | null
-  goalsThreshold: number | null
+  homeGoalsThreshold: number | null
+  awayGoalsThreshold: number | null
 }
 
 export async function getPredictionForMatch(
@@ -37,8 +37,8 @@ export async function getPredictionForMatch(
       predicted_home_score,
       predicted_away_score,
       outcome,
-      goals_team,
-      goals_threshold,
+      home_goals_threshold,
+      away_goals_threshold,
       matches!inner (id)
     `)
     .eq('user_id', userId)
@@ -53,8 +53,8 @@ export async function getPredictionForMatch(
     predictedHomeScore: data.predicted_home_score as number | null,
     predictedAwayScore: data.predicted_away_score as number | null,
     outcome: data.outcome as string | null,
-    goalsTeam: data.goals_team as string | null,
-    goalsThreshold: data.goals_threshold as number | null,
+    homeGoalsThreshold: data.home_goals_threshold as number | null,
+    awayGoalsThreshold: data.away_goals_threshold as number | null,
   }
 }
 
@@ -91,8 +91,8 @@ export async function savePrediction(
       predicted_home_score: prediction.predictedHomeScore,
       predicted_away_score: prediction.predictedAwayScore,
       outcome: prediction.outcome,
-      goals_team: prediction.goalsTeam,
-      goals_threshold: prediction.goalsThreshold,
+      home_goals_threshold: prediction.homeGoalsThreshold,
+      away_goals_threshold: prediction.awayGoalsThreshold,
     }, { onConflict: 'user_id,match_id' })
 
   if (error) {
@@ -112,8 +112,8 @@ export async function getUserPredictions(userId: string): Promise<UserPrediction
       predicted_home_score,
       predicted_away_score,
       outcome,
-      goals_team,
-      goals_threshold,
+      home_goals_threshold,
+      away_goals_threshold,
       points_earned,
       matches (
         home_team,
@@ -144,8 +144,8 @@ export async function getUserPredictions(userId: string): Promise<UserPrediction
       predictedHomeScore: row.predicted_home_score as number | null,
       predictedAwayScore: row.predicted_away_score as number | null,
       outcome: row.outcome as string | null,
-      goalsTeam: row.goals_team as string | null,
-      goalsThreshold: row.goals_threshold as number | null,
+      homeGoalsThreshold: row.home_goals_threshold as number | null,
+      awayGoalsThreshold: row.away_goals_threshold as number | null,
       actualHomeScore: (match?.home_score as number) ?? null,
       actualAwayScore: (match?.away_score as number) ?? null,
       pointsEarned: (row.points_earned as number) || 0,
@@ -158,8 +158,8 @@ export interface OtherPrediction {
   predictedHomeScore: number | null
   predictedAwayScore: number | null
   outcome: string | null
-  goalsTeam: string | null
-  goalsThreshold: number | null
+  homeGoalsThreshold: number | null
+  awayGoalsThreshold: number | null
 }
 
 export interface MatchPredictionsInfo {
@@ -178,8 +178,8 @@ export async function getMatchOtherPredictions(
       predicted_home_score,
       predicted_away_score,
       outcome,
-      goals_team,
-      goals_threshold,
+      home_goals_threshold,
+      away_goals_threshold,
       users!inner (username)
     `)
     .eq('match_id', matchId)
@@ -196,8 +196,8 @@ export async function getMatchOtherPredictions(
       predictedHomeScore: row.predicted_home_score as number | null,
       predictedAwayScore: row.predicted_away_score as number | null,
       outcome: row.outcome as string | null,
-      goalsTeam: row.goals_team as string | null,
-      goalsThreshold: row.goals_threshold as number | null,
+      homeGoalsThreshold: row.home_goals_threshold as number | null,
+      awayGoalsThreshold: row.away_goals_threshold as number | null,
     }
   })
 

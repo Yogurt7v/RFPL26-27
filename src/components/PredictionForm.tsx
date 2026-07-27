@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { getTeamByName } from '../lib/teams'
-import { validatePrediction, type Outcome, type GoalsTeam } from '../lib/scoring'
+import { validatePrediction, type Outcome } from '../lib/scoring'
 
 export interface PredictionFormData {
   predictedHomeScore: number | null
   predictedAwayScore: number | null
   outcome: Outcome | null
-  goalsTeam: GoalsTeam | null
-  goalsThreshold: number | null
+  homeGoalsThreshold: number | null
+  awayGoalsThreshold: number | null
 }
 
 interface PredictionFormProps {
@@ -23,10 +23,8 @@ interface PredictionFormProps {
   canEdit?: boolean
 }
 
-type ActiveStep = 'outcome' | 'score' | 'goals' | null
-
-const SCORE_OPTIONS = [0, 1, 2, 3, 4]
-const SCORE_OPTIONS_EXTRA = [5, 6, 7, 8, 9, 10]
+const SCORE_OPTIONS = [0, 1, 2, 3, 4, 5]
+const GOALS_OPTIONS = [2, 3, 4, 5]
 
 export function PredictionForm({
   homeTeam,
@@ -40,14 +38,11 @@ export function PredictionForm({
   onSaved,
   canEdit = false,
 }: PredictionFormProps) {
-  const [activeStep, setActiveStep] = useState<ActiveStep>('outcome')
   const [homeScore, setHomeScore] = useState<number | ''>(initialValues?.predictedHomeScore ?? '')
   const [awayScore, setAwayScore] = useState<number | ''>(initialValues?.predictedAwayScore ?? '')
   const [outcome, setOutcome] = useState<Outcome | ''>((initialValues?.outcome as Outcome) || '')
-  const [goalsTeam, setGoalsTeam] = useState<GoalsTeam | ''>((initialValues?.goalsTeam as GoalsTeam) || '')
-  const [goalsThreshold, setGoalsThreshold] = useState<number | ''>(initialValues?.goalsThreshold ?? '')
-  const [showExtraScore, setShowExtraScore] = useState(false)
-  const [showExtraGoals, setShowExtraGoals] = useState(false)
+  const [homeGoalsThreshold, setHomeGoalsThreshold] = useState<number | ''>(initialValues?.homeGoalsThreshold ?? '')
+  const [awayGoalsThreshold, setAwayGoalsThreshold] = useState<number | ''>(initialValues?.awayGoalsThreshold ?? '')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSaved, setIsSaved] = useState(!!initialValues)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -59,8 +54,8 @@ export function PredictionForm({
     predictedHomeScore: homeScore !== '' ? homeScore : null,
     predictedAwayScore: awayScore !== '' ? awayScore : null,
     outcome: (outcome as Outcome) || null,
-    goalsTeam: (goalsTeam as GoalsTeam) || null,
-    goalsThreshold: goalsThreshold !== '' ? goalsThreshold : null,
+    homeGoalsThreshold: homeGoalsThreshold !== '' ? homeGoalsThreshold : null,
+    awayGoalsThreshold: awayGoalsThreshold !== '' ? awayGoalsThreshold : null,
   })
 
   const handleSubmit = async () => {
@@ -86,29 +81,14 @@ export function PredictionForm({
     }
   }
 
-  const handleSkip = () => {
-    if (activeStep === 'outcome') { setActiveStep('score'); return }
-    if (activeStep === 'score') { setActiveStep('goals'); return }
-    if (activeStep === 'goals') { setActiveStep(null); return }
-  }
-
-  const handleNext = () => {
-    if (activeStep === 'outcome') { setActiveStep('score'); return }
-    if (activeStep === 'score') { setActiveStep('goals'); return }
-    if (activeStep === 'goals') { setActiveStep(null); return }
-  }
-
-  const handleBack = () => {
-    if (activeStep === 'score') { setActiveStep('outcome'); return }
-    if (activeStep === 'goals') { setActiveStep('score'); return }
-  }
-
-  const currentScoreOptions = showExtraScore ? [...SCORE_OPTIONS, ...SCORE_OPTIONS_EXTRA] : SCORE_OPTIONS
-  const currentGoalsOptions = showExtraGoals ? [...SCORE_OPTIONS, ...SCORE_OPTIONS_EXTRA] : SCORE_OPTIONS
-
-  const hasOutcome = !!outcome
   const hasScore = homeScore !== '' && awayScore !== ''
-  const hasGoals = !!goalsTeam && goalsThreshold !== ''
+
+  const formatGoalsSummary = () => {
+    const parts: string[] = []
+    if (homeGoalsThreshold !== '') parts.push(`${homeTeam} ≥ ${homeGoalsThreshold}`)
+    if (awayGoalsThreshold !== '') parts.push(`${awayTeam} ≥ ${awayGoalsThreshold}`)
+    return parts.length > 0 ? parts.join(', ') : '—'
+  }
 
   /* ─── Saved state ──────────────────────── */
   if (isSaved) {
@@ -144,7 +124,7 @@ export function PredictionForm({
           <div className="check__summary-row">
             <span className="check__summary-label">Порог голов</span>
             <span className="check__summary-value">
-              {hasGoals ? `${goalsTeam === 'home' ? homeTeam : awayTeam} ≥ ${goalsThreshold}` : '—'}
+              {formatGoalsSummary()}
             </span>
           </div>
         </div>
@@ -181,7 +161,6 @@ export function PredictionForm({
       </div>
 
       <div className="check__match">
-        <div className="check__match-label">Матч</div>
         <div className="check__teams">
           <div className="check__team">
             {home && <img src={home.logo} alt="" className="check__logo" />}
@@ -201,104 +180,65 @@ export function PredictionForm({
         </div>
       )}
 
-      <div className="check__rows">
-        {/* Step 1: Outcome */}
-        <div className={`check__row ${activeStep === 'outcome' ? 'check__row--active' : ''} ${activeStep !== 'outcome' && hasOutcome ? 'check__row--done' : ''}`}>
-          <span className="check__row-number">{hasOutcome && activeStep !== 'outcome' ? '✓' : '1'}</span>
-          <span className="check__row-label">Исход</span>
-          {hasOutcome && activeStep !== 'outcome' && (
-            <>
-              <span className="check__row-dots" />
-              <span className="check__row-value">{outcome === '1' ? 'П1' : outcome === 'X' ? 'Ничья' : 'П2'}</span>
-            </>
-          )}
-          {!hasOutcome && activeStep !== 'outcome' && <span className="check__row-skip">пропущено</span>}
-
-          {activeStep === 'outcome' && (
-            <div className="check__row-content">
-              <div className="check__outcome-buttons">
-                <button type="button" className={`check__outcome-btn ${outcome === '1' ? 'check__outcome-btn--active' : ''}`} onClick={() => setOutcome('1')}>П1</button>
-                <button type="button" className={`check__outcome-btn ${outcome === 'X' ? 'check__outcome-btn--active' : ''}`} onClick={() => setOutcome('X')}>Ничья</button>
-                <button type="button" className={`check__outcome-btn ${outcome === '2' ? 'check__outcome-btn--active' : ''}`} onClick={() => setOutcome('2')}>П2</button>
-              </div>
-              <div className="check__step-actions">
-                <button type="button" className="check__btn check__btn--skip" onClick={handleSkip}>Пропустить</button>
-                <button type="button" className="check__btn check__btn--next" onClick={handleNext} disabled={!outcome}>Далее</button>
-              </div>
-            </div>
-          )}
+      <div className="check__sections">
+        {/* Outcome toggle */}
+        <div className="check__section">
+          <div className="check__section-label">Исход</div>
+          <div className="check__outcome-toggle">
+            <button type="button" className={`check__outcome-btn ${outcome === '1' ? 'check__outcome-btn--active' : ''}`} onClick={() => setOutcome(outcome === '1' ? '' : '1')}>
+              <span className="check__outcome-main">П1</span>
+              <span className="check__outcome-sub">Хозяева</span>
+            </button>
+            <button type="button" className={`check__outcome-btn ${outcome === 'X' ? 'check__outcome-btn--active' : ''}`} onClick={() => setOutcome(outcome === 'X' ? '' : 'X')}>
+              <span className="check__outcome-main">X</span>
+              <span className="check__outcome-sub">Ничья</span>
+            </button>
+            <button type="button" className={`check__outcome-btn ${outcome === '2' ? 'check__outcome-btn--active' : ''}`} onClick={() => setOutcome(outcome === '2' ? '' : '2')}>
+              <span className="check__outcome-main">П2</span>
+              <span className="check__outcome-sub">Гости</span>
+            </button>
+          </div>
         </div>
 
-        {/* Step 2: Score */}
-        <div className={`check__row ${activeStep === 'score' ? 'check__row--active' : ''} ${activeStep !== 'score' && hasScore ? 'check__row--done' : ''}`}>
-          <span className="check__row-number">{hasScore && activeStep !== 'score' ? '✓' : '2'}</span>
-          <span className="check__row-label">Точный счёт</span>
-          {hasScore && activeStep !== 'score' && (
-            <>
-              <span className="check__row-dots" />
-              <span className="check__row-value">{homeScore}:{awayScore}</span>
-            </>
-          )}
-          {!hasScore && activeStep !== 'score' && <span className="check__row-skip">пропущено</span>}
-
-          {activeStep === 'score' && (
-            <div className="check__row-content">
-              <div className="check__score-selects">
-                <select value={homeScore} onChange={e => setHomeScore(e.target.value === '' ? '' : parseInt(e.target.value))} className="check__score-select">
-                  <option value="">—</option>
-                  {currentScoreOptions.map(n => <option key={n} value={n}>{n}</option>)}
-                </select>
-                <span className="check__score-sep">:</span>
-                <select value={awayScore} onChange={e => setAwayScore(e.target.value === '' ? '' : parseInt(e.target.value))} className="check__score-select">
-                  <option value="">—</option>
-                  {currentScoreOptions.map(n => <option key={n} value={n}>{n}</option>)}
-                </select>
-              </div>
-              {!showExtraScore && <button type="button" className="check__show-more" onClick={() => setShowExtraScore(true)}>Больше (5-10) ▼</button>}
-              <div className="check__step-actions">
-                <button type="button" className="check__btn check__btn--back" onClick={handleBack}>Назад</button>
-                <button type="button" className="check__btn check__btn--skip" onClick={handleSkip}>Пропустить</button>
-                <button type="button" className="check__btn check__btn--next" onClick={handleNext} disabled={!hasScore}>Далее</button>
-              </div>
-            </div>
-          )}
+        {/* Score */}
+        <div className="check__section">
+          <div className="check__section-label">Точный счёт</div>
+          <div className="check__score-selects">
+            <select value={homeScore} onChange={e => setHomeScore(e.target.value === '' ? '' : parseInt(e.target.value))} className="check__score-select">
+              <option value="">—</option>
+              {SCORE_OPTIONS.map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+            <span className="check__score-sep">:</span>
+            <select value={awayScore} onChange={e => setAwayScore(e.target.value === '' ? '' : parseInt(e.target.value))} className="check__score-select">
+              <option value="">—</option>
+              {SCORE_OPTIONS.map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </div>
         </div>
 
-        {/* Step 3: Goals threshold */}
-        <div className={`check__row ${activeStep === 'goals' ? 'check__row--active' : ''} ${activeStep !== 'goals' && hasGoals ? 'check__row--done' : ''}`}>
-          <span className="check__row-number">{hasGoals && activeStep !== 'goals' ? '✓' : '3'}</span>
-          <span className="check__row-label">Порог голов</span>
-          {hasGoals && activeStep !== 'goals' && (
-            <>
-              <span className="check__row-dots" />
-              <span className="check__row-value">{goalsTeam === 'home' ? homeTeam : awayTeam} ≥ {goalsThreshold}</span>
-            </>
-          )}
-          {!hasGoals && activeStep !== 'goals' && <span className="check__row-skip">пропущено</span>}
-
-          {activeStep === 'goals' && (
-            <div className="check__row-content">
-              <div className="check__goals-selects">
-                <select value={goalsTeam} onChange={e => setGoalsTeam(e.target.value as GoalsTeam | '')} className="check__goals-select">
-                  <option value="">Команда</option>
-                  <option value="home">{homeTeam}</option>
-                  <option value="away">{awayTeam}</option>
-                </select>
-                <span className="check__goals-text">забьёт ≥</span>
-                <select value={goalsThreshold} onChange={e => setGoalsThreshold(e.target.value === '' ? '' : parseInt(e.target.value))} className="check__score-select">
-                  <option value="">—</option>
-                  {currentGoalsOptions.map(n => <option key={n} value={n}>{n}</option>)}
-                </select>
-                <span className="check__goals-text">голов</span>
-              </div>
-              {!showExtraGoals && <button type="button" className="check__show-more" onClick={() => setShowExtraGoals(true)}>Больше (5-10) ▼</button>}
-              <div className="check__step-actions">
-                <button type="button" className="check__btn check__btn--back" onClick={handleBack}>Назад</button>
-                <button type="button" className="check__btn check__btn--skip" onClick={handleSkip}>Пропустить</button>
-                <button type="button" className="check__btn check__btn--next" onClick={handleNext} disabled={!goalsTeam || goalsThreshold === ''}>Далее</button>
-              </div>
+        {/* Goals threshold */}
+        <div className="check__section">
+          <div className="check__section-label">Порог голов</div>
+          <div className="check__goals-rows">
+            <div className="check__goals-row">
+              <span className="check__goals-label">{homeTeam}</span>
+              <span className="check__goals-text">забьёт ≥</span>
+              <select value={homeGoalsThreshold} onChange={e => setHomeGoalsThreshold(e.target.value === '' ? '' : parseInt(e.target.value))} className="check__goals-select">
+                <option value="">—</option>
+                {GOALS_OPTIONS.map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+              <span className="check__goals-text">голов</span>
             </div>
-          )}
+            <div className="check__goals-row">
+              <span className="check__goals-label">{awayTeam}</span>
+              <span className="check__goals-text">забьёт ≥</span>
+              <select value={awayGoalsThreshold} onChange={e => setAwayGoalsThreshold(e.target.value === '' ? '' : parseInt(e.target.value))} className="check__goals-select">
+                <option value="">—</option>
+                {GOALS_OPTIONS.map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+              <span className="check__goals-text">голов</span>
+            </div>
+          </div>
         </div>
       </div>
 

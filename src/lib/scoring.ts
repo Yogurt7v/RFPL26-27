@@ -1,18 +1,16 @@
 export const SCORING = {
   EXACT_SCORE: 5,
   OUTCOME: 3,
-  MAX_POINTS_PER_MATCH: 8,
 } as const
 
 export type Outcome = '1' | 'X' | '2'
-export type GoalsTeam = 'home' | 'away'
 
 export interface Prediction {
   predictedHomeScore?: number | null
   predictedAwayScore?: number | null
   outcome?: Outcome | null
-  goalsTeam?: GoalsTeam | null
-  goalsThreshold?: number | null
+  homeGoalsThreshold?: number | null
+  awayGoalsThreshold?: number | null
 }
 
 export interface MatchResult {
@@ -62,12 +60,12 @@ export function calculatePoints(
     }
   }
 
-  if (prediction.goalsTeam != null && prediction.goalsThreshold != null) {
-    const actualGoals =
-      prediction.goalsTeam === 'home' ? result.homeScore : result.awayScore
-    if (actualGoals >= prediction.goalsThreshold) {
-      points += prediction.goalsThreshold
-    }
+  if (prediction.homeGoalsThreshold != null && result.homeScore >= prediction.homeGoalsThreshold) {
+    points += prediction.homeGoalsThreshold
+  }
+
+  if (prediction.awayGoalsThreshold != null && result.awayScore >= prediction.awayGoalsThreshold) {
+    points += prediction.awayGoalsThreshold
   }
 
   return points
@@ -82,8 +80,11 @@ export function validatePrediction(prediction: Prediction): string[] {
   if (prediction.predictedAwayScore != null && prediction.predictedAwayScore < 0) {
     errors.push('Счёт гостей не может быть отрицательным')
   }
-  if (prediction.goalsThreshold != null && prediction.goalsThreshold < 1) {
-    errors.push('Порог голов должен быть не менее 1')
+  if (prediction.homeGoalsThreshold != null && prediction.homeGoalsThreshold < 1) {
+    errors.push('Порог голов хозяев должен быть не менее 1')
+  }
+  if (prediction.awayGoalsThreshold != null && prediction.awayGoalsThreshold < 1) {
+    errors.push('Порог голов гостей должен быть не менее 1')
   }
   if (prediction.outcome != null && !['1', 'X', '2'].includes(prediction.outcome)) {
     errors.push('Исход должен быть 1, X или 2')

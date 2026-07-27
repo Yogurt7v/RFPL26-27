@@ -4,6 +4,13 @@ import { getTeamByName } from '../lib/teams'
 import { formatScore, formatDate } from '../lib/format'
 import { Spinner } from './Spinner'
 
+function formatGoalsThreshold(pred: UserPrediction): string {
+  const parts: string[] = []
+  if (pred.homeGoalsThreshold != null) parts.push(`${pred.homeTeam} ≥ ${pred.homeGoalsThreshold}`)
+  if (pred.awayGoalsThreshold != null) parts.push(`${pred.awayTeam} ≥ ${pred.awayGoalsThreshold}`)
+  return parts.length > 0 ? parts.join(', ') : '—'
+}
+
 interface PredictionResultsProps {
   userId: string
 }
@@ -85,7 +92,7 @@ export function PredictionResults({ userId }: PredictionResultsProps) {
                 <td className="prediction-results__td">
                   {pred.predictedHomeScore != null && pred.predictedAwayScore != null
                     ? formatScore(pred.predictedHomeScore, pred.predictedAwayScore)
-                    : pred.outcome || `${pred.goalsTeam} ≥ ${pred.goalsThreshold}`}
+                    : pred.outcome || formatGoalsThreshold(pred)}
                 </td>
                 <td className="prediction-results__td">
                   {pred.actualHomeScore != null && pred.actualAwayScore != null

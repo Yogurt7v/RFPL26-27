@@ -40,8 +40,8 @@ export function PredictPage() {
             predictedHomeScore: existing.predictedHomeScore,
             predictedAwayScore: existing.predictedAwayScore,
             outcome: (existing.outcome as '1' | 'X' | '2') || null,
-            goalsTeam: (existing.goalsTeam as 'home' | 'away') || null,
-            goalsThreshold: existing.goalsThreshold,
+            homeGoalsThreshold: existing.homeGoalsThreshold,
+            awayGoalsThreshold: existing.awayGoalsThreshold,
           })
         }
       } catch (err) {
@@ -104,8 +104,8 @@ export function PredictPage() {
         predictedHomeScore: prediction.predictedHomeScore,
         predictedAwayScore: prediction.predictedAwayScore,
         outcome: prediction.outcome,
-        goalsTeam: prediction.goalsTeam,
-        goalsThreshold: prediction.goalsThreshold,
+        homeGoalsThreshold: prediction.homeGoalsThreshold,
+        awayGoalsThreshold: prediction.awayGoalsThreshold,
       }
     )
   }
@@ -186,9 +186,7 @@ export function PredictPage() {
                       : '—'}
                   </span>
                   <span className="check__others-cell">
-                    {p.goalsTeam && p.goalsThreshold != null
-                      ? `${p.goalsTeam === 'home' ? match.homeTeam : match.awayTeam} ≥ ${p.goalsThreshold}`
-                      : '—'}
+                    {formatGoalsThreshold(p, match.homeTeam, match.awayTeam)}
                   </span>
                 </div>
               ))}
@@ -226,6 +224,17 @@ export function PredictPage() {
       </button>
     </div>
   )
+}
+
+function formatGoalsThreshold(
+  p: OtherPrediction,
+  homeTeam: string,
+  awayTeam: string
+): string {
+  const parts: string[] = []
+  if (p.homeGoalsThreshold != null) parts.push(`${homeTeam} ≥ ${p.homeGoalsThreshold}`)
+  if (p.awayGoalsThreshold != null) parts.push(`${awayTeam} ≥ ${p.awayGoalsThreshold}`)
+  return parts.length > 0 ? parts.join(', ') : '—'
 }
 
 export default PredictPage

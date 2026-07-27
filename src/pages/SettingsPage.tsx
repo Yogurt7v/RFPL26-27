@@ -2,6 +2,7 @@ import { useContext } from 'react'
 import { ThemeContext } from '../context/ThemeContext'
 import { useAuth } from '../hooks/useAuth'
 import { PredictionResults } from '../components/PredictionResults'
+import { APP_VERSION } from '../config'
 
 const FONT_SIZE_LABELS: Record<number, string> = {
   1: 'Очень маленький',
@@ -77,7 +78,12 @@ export function SettingsPage() {
 
       <div className="settings__zigzag" />
 
+
       {user && <PredictionResults userId={user.id} />}
+
+      <div className="settings__version">
+        Версия {APP_VERSION}
+      </div>
     </div>
   )
 }

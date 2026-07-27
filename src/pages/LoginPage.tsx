@@ -89,7 +89,7 @@ export function LoginPage() {
       <div className="login-brand">
         <img className="login-brand__icon" src="/favicon/favicon-96x96.png" alt="Рфпл" />
         <h1 className="login-brand__title">РПЛ<br />Прогнозы</h1>
-        <p className="login-brand__subtitle">Прогнозы матчей РФПЛ 2026/2027</p>
+        <p className="login-brand__subtitle">Прогнозы матчей РПЛ 2026/2027</p>
       </div>
       <div className="login-form">
         <div className="login-form__inner">

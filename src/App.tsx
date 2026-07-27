@@ -6,6 +6,7 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { Layout } from './components/Layout'
 import { Spinner } from './components/Spinner'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { UpdateBanner } from './components/UpdateBanner'
 import './App.css'
 
 const LoginPage = lazy(() => import('./pages/LoginPage'))
@@ -69,6 +70,7 @@ function App() {
                 </Route>
               </Routes>
             </Suspense>
+            <UpdateBanner />
           </ErrorBoundary>
         </AuthProvider>
       </ThemeProvider>
