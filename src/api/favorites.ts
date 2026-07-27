@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { withRetry } from './retry'
 
 export interface Favorite {
   id: number
@@ -48,10 +49,12 @@ export async function getFavoritesForMatches(
 
   if (matchIds.length === 0) return result
 
-  const { data, error } = await supabase
-    .from('favorites')
-    .select('id, user_id, match_id')
-    .in('match_id', matchIds)
+  const { data, error } = await withRetry(() =>
+    supabase
+      .from('favorites')
+      .select('id, user_id, match_id')
+      .in('match_id', matchIds)
+  )
 
   if (error || !data || data.length === 0) return result
 
@@ -60,10 +63,12 @@ export async function getFavoritesForMatches(
   let userMap = new Map<string, string>()
   if (userIds.length > 0) {
     try {
-      const { data: users } = await supabase
-        .from('users')
-        .select('id, username')
-        .in('id', userIds)
+      const { data: users } = await withRetry(() =>
+        supabase
+          .from('users')
+          .select('id, username')
+          .in('id', userIds)
+      )
 
       if (users) {
         for (const u of users as Array<{ id: string; username: string }>) {
@@ -96,11 +101,13 @@ export async function getUserFavoriteIds(
 ): Promise<Set<string>> {
   if (matchIds.length === 0) return new Set()
 
-  const { data, error } = await supabase
-    .from('favorites')
-    .select('match_id')
-    .eq('user_id', userId)
-    .in('match_id', matchIds)
+  const { data, error } = await withRetry(() =>
+    supabase
+      .from('favorites')
+      .select('match_id')
+      .eq('user_id', userId)
+      .in('match_id', matchIds)
+  )
 
   if (error || !data) return new Set()
 

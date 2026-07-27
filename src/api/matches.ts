@@ -1,4 +1,5 @@
 import { getTeamBySoccer365Id } from '../lib/teams'
+import { withRetry } from './retry'
 
 export interface Match {
   id: string
@@ -181,7 +182,9 @@ async function fetchResults(): Promise<Match[]> {
   }
 
   try {
-    const response = await fetch('/api/soccer365/competitions/13/results/')
+    const response = await withRetry(() =>
+      fetch('/api/soccer365/competitions/13/results/')
+    )
     const html = stripScripts(await response.text())
     const data = parseMatchesFromHTML(html)
     memResults = data
@@ -208,7 +211,9 @@ async function fetchSchedule(): Promise<Match[]> {
   }
 
   try {
-    const response = await fetch('/api/soccer365/competitions/13/shedule/')
+    const response = await withRetry(() =>
+      fetch('/api/soccer365/competitions/13/shedule/')
+    )
     const html = stripScripts(await response.text())
     const data = parseMatchesFromHTML(html)
     memSchedule = data

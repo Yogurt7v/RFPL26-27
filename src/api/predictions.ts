@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { withRetry } from './retry'
 
 export interface UserPrediction {
   id: number
@@ -31,21 +32,23 @@ export async function getPredictionForMatch(
   awayTeam: string,
   round: number
 ): Promise<PredictionData | null> {
-  const { data } = await supabase
-    .from('predictions')
-    .select(`
-      predicted_home_score,
-      predicted_away_score,
-      outcome,
-      home_goals_threshold,
-      away_goals_threshold,
-      matches!inner (id)
-    `)
-    .eq('user_id', userId)
-    .eq('matches.home_team', homeTeam)
-    .eq('matches.away_team', awayTeam)
-    .eq('matches.round', round)
-    .maybeSingle()
+  const { data } = await withRetry(() =>
+    supabase
+      .from('predictions')
+      .select(`
+        predicted_home_score,
+        predicted_away_score,
+        outcome,
+        home_goals_threshold,
+        away_goals_threshold,
+        matches!inner (id)
+      `)
+      .eq('user_id', userId)
+      .eq('matches.home_team', homeTeam)
+      .eq('matches.away_team', awayTeam)
+      .eq('matches.round', round)
+      .maybeSingle()
+  )
 
   if (!data) return null
 
@@ -59,13 +62,15 @@ export async function getPredictionForMatch(
 }
 
 export async function findMatchId(homeTeam: string, awayTeam: string, round: number): Promise<number | null> {
-  const { data } = await supabase
-    .from('matches')
-    .select('id')
-    .eq('home_team', homeTeam)
-    .eq('away_team', awayTeam)
-    .eq('round', round)
-    .single()
+  const { data } = await withRetry(() =>
+    supabase
+      .from('matches')
+      .select('id')
+      .eq('home_team', homeTeam)
+      .eq('away_team', awayTeam)
+      .eq('round', round)
+      .single()
+  )
 
   return data?.id ?? null
 }
@@ -104,28 +109,30 @@ export async function savePrediction(
 }
 
 export async function getUserPredictions(userId: string): Promise<UserPrediction[]> {
-  const { data, error } = await supabase
-    .from('predictions')
-    .select(`
-      id,
-      match_id,
-      predicted_home_score,
-      predicted_away_score,
-      outcome,
-      home_goals_threshold,
-      away_goals_threshold,
-      points_earned,
-      matches (
-        home_team,
-        away_team,
-        match_date,
-        status,
-        home_score,
-        away_score
-      )
-    `)
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
+  const { data, error } = await withRetry(() =>
+    supabase
+      .from('predictions')
+      .select(`
+        id,
+        match_id,
+        predicted_home_score,
+        predicted_away_score,
+        outcome,
+        home_goals_threshold,
+        away_goals_threshold,
+        points_earned,
+        matches (
+          home_team,
+          away_team,
+          match_date,
+          status,
+          home_score,
+          away_score
+        )
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+  )
 
   if (error) {
     console.error('Error fetching predictions:', error)
@@ -172,18 +179,20 @@ export async function getMatchOtherPredictions(
   matchId: number,
   currentUserId: string
 ): Promise<MatchPredictionsInfo> {
-  const { data, error } = await supabase
-    .from('predictions')
-    .select(`
-      predicted_home_score,
-      predicted_away_score,
-      outcome,
-      home_goals_threshold,
-      away_goals_threshold,
-      users!inner (username)
-    `)
-    .eq('match_id', matchId)
-    .neq('user_id', currentUserId)
+  const { data, error } = await withRetry(() =>
+    supabase
+      .from('predictions')
+      .select(`
+        predicted_home_score,
+        predicted_away_score,
+        outcome,
+        home_goals_threshold,
+        away_goals_threshold,
+        users!inner (username)
+      `)
+      .eq('match_id', matchId)
+      .neq('user_id', currentUserId)
+  )
 
   if (error || !data) {
     return { count: 0, usernames: [], predictions: [] }

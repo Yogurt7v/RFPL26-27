@@ -1524,3 +1524,69 @@
   color: white;
   border: 1px solid rgba(255, 255, 255, 0.4);
 }
+
+/* Skeleton loading */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-secondary) 25%,
+    var(--color-border) 50%,
+    var(--color-bg-secondary) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-md);
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton--card {
+  height: 100px;
+  margin-bottom: var(--spacing-sm);
+}
+
+.skeleton--text {
+  height: 1em;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton--text-sm {
+  height: 0.75em;
+  width: 60%;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton--circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.match-card--skeleton {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.match-card--skeleton .match-card__meta,
+.match-card--skeleton .match-card__main,
+.match-card--skeleton .match-card__footer {
+  visibility: hidden;
+}
+
+.match-card--skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 25%,
+    var(--color-border) 50%,
+    transparent 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  border-radius: inherit;
+}

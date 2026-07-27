@@ -1,4 +1,5 @@
 import { getTeamBySoccer365Id } from '../lib/teams'
+import { withRetry } from './retry'
 
 function stripScripts(html: string): string {
   return html.replace(/<script[\s\S]*?<\/script>/gi, '')
@@ -17,7 +18,9 @@ export interface LiveScore {
 
 export async function getLiveScores(): Promise<LiveScore[]> {
   try {
-    const response = await fetch('/api/soccer365/online/')
+    const response = await withRetry(() =>
+      fetch('/api/soccer365/online/')
+    )
     const html = stripScripts(await response.text())
 
     const liveScores: LiveScore[] = []
