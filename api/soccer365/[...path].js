@@ -1,11 +1,10 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const path = (req.query.path as string[])?.join('/') ?? ''
+  const path = (req.query.path)?.join('/') ?? ''
   const targetUrl = `https://soccer365.ru/${path}`
 
   try {

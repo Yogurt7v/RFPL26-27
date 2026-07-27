@@ -14,9 +14,9 @@ export function UpdateBanner() {
         <button type="button" className="update-banner__btn update-banner__btn--update" onClick={update}>
           Обновить
         </button>
-        <button type="button" className="update-banner__btn update-banner__btn--dismiss" onClick={dismiss}>
+        {/*<button type="button" className="update-banner__btn update-banner__btn--dismiss" onClick={dismiss}>
           Позже
-        </button>
+        </button>*/}
       </div>
     </div>
   )

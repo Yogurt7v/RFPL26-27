@@ -1,8 +1,13 @@
 {
-  "rewrites": [],
-  "functions": {
-    "api/soccer365/[...path].ts": {
-      "maxDuration": 30
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
     }
-  }
+  ],
+    "functions": {
+      "api/**/*.js": {
+        "maxDuration": 30
+      }
+    }
 }
