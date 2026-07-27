@@ -1,8 +1,8 @@
 {
-  "rewrites": [
-    {
-      "source": "/api/soccer365/:path*",
-      "destination": "https://soccer365.ru/:path*"
+  "rewrites": [],
+  "functions": {
+    "api/soccer365/[...path].ts": {
+      "maxDuration": 30
     }
-  ]
+  }
 }

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
-let updateSW: (() => Promise<void>) | null = null
+let updateSWFn: (() => Promise<void>) | null = null
 
 export function usePWAUpdate() {
   const [needRefresh, setNeedRefresh] = useState(false)
@@ -15,15 +15,21 @@ export function usePWAUpdate() {
       try {
         const { registerSW } = await import('virtual:pwa-register')
 
-        updateSW = registerSW({
+        updateSWFn = registerSW({
           onNeedRefresh() {
             if (mounted) setNeedRefresh(true)
           },
           onOfflineReady() {
             if (mounted) setOfflineReady(true)
           },
-          onRegisteredSW(swUrl) {
+          onRegisteredSW(swUrl, registration) {
             console.log('SW registered:', swUrl)
+            if (registration?.waiting && mounted) {
+              setNeedRefresh(true)
+            }
+          },
+          onRegisterError(error) {
+            console.error('SW registration error:', error)
           },
         })
       } catch (err) {
@@ -36,17 +42,17 @@ export function usePWAUpdate() {
     return () => { mounted = false }
   }, [])
 
-  const handleUpdate = async () => {
-    if (updateSW) {
-      await updateSW()
+  const update = useCallback(async () => {
+    if (updateSWFn) {
+      await updateSWFn()
       window.location.reload()
     }
-  }
+  }, [])
 
-  const dismiss = () => {
+  const dismiss = useCallback(() => {
     setNeedRefresh(false)
     setOfflineReady(false)
-  }
+  }, [])
 
-  return { needRefresh, offlineReady, update: handleUpdate, dismiss }
+  return { needRefresh, offlineReady, update, dismiss }
 }

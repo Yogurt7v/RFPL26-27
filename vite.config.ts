@@ -1,10 +1,25 @@
 import { defineConfig } from 'vite'
+import { execSync } from 'child_process'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+function getGitHash(): string {
+  try {
+    return execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim()
+  } catch {
+    return 'dev'
+  }
+}
+
+function getTimestamp(): string {
+  return new Date().toISOString().replace(/[-:T]/g, '').slice(0, 13)
+}
+
 export default defineConfig({
   define: {
-    __APP_VERSION__: JSON.stringify(process.env.VITE_APP_VERSION || 'dev'),
+    __APP_VERSION__: JSON.stringify(
+      process.env.VITE_APP_VERSION || `${getTimestamp()}-${getGitHash()}`
+    ),
   },
   plugins: [
     react(),
