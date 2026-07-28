@@ -26,7 +26,23 @@
 /* Десктоп (1024px+) */
 @media (min-width: 1024px) {
   .layout__content {
-    max-width: 960px;
+    max-width: min(90%, 1400px);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--spacing-lg));
+  }
+
+  .match-list__header {
+    position: fixed;
+    top: var(--header-height);
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(90%, 1400px);
+    z-index: 90;
+    margin-bottom: 0;
+    background: var(--color-bg);
+  }
+
+  .match-list {
+    padding-top: 48px;
   }
 
   .match-list__grid {
@@ -36,40 +52,69 @@
   }
 
   .match-list__group {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--spacing-lg);
+  }
+
+  .match-list__date-header {
     width: 100%;
-    margin-bottom: var(--spacing-lg);
+    font-size: var(--font-size-xl);
+    font-weight: 300;
   }
 
   .match-list__day-group {
+    flex: 1;
+    min-width: 200px;
+    padding: var(--spacing-md);
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+  }
+
+  .match-list__day-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    padding-bottom: var(--spacing-sm);
     margin-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--color-primary);
+    color: var(--color-text);
   }
 
   .match-list__group-items {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-md);
+    gap: var(--spacing-sm);
+  }
+
+  .match-card {
+    margin-bottom: 0;
   }
 
   .bottom-nav {
-    position: static;
-    height: auto;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--bottom-nav-height);
     flex-direction: row;
     justify-content: center;
     gap: var(--spacing-lg);
     padding: var(--spacing-sm) var(--spacing-md);
-    border-top: none;
-    border-bottom: 1px solid var(--color-border);
-    box-shadow: none;
+    border-top: 1px solid var(--color-border);
+    border-bottom: none;
   }
 
   .bottom-nav__item {
     flex: none;
     flex-direction: row;
     gap: var(--spacing-xs);
-  }
-
-  .layout__content {
-    padding-bottom: var(--spacing-lg);
   }
 
   .header__username {
@@ -80,28 +125,24 @@
 /* Большие десктопы (1280px+) */
 @media (min-width: 1280px) {
   .layout__content {
-    max-width: 1120px;
+    max-width: min(90%, 1600px);
   }
 
   .match-list__grid {
-    display: flex;
-    flex-direction: column;
     gap: var(--spacing-xl);
   }
 
   .match-list__group {
-    width: 100%;
-    margin-bottom: var(--spacing-xl);
+    gap: var(--spacing-xl);
   }
 
   .match-list__day-group {
-    margin-bottom: var(--spacing-lg);
+    min-width: 240px;
+    padding: var(--spacing-lg);
   }
 
   .match-list__group-items {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-lg);
+    gap: var(--spacing-md);
   }
 }
 
