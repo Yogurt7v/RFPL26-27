@@ -167,6 +167,7 @@ export interface OtherPrediction {
   outcome: string | null
   homeGoalsThreshold: number | null
   awayGoalsThreshold: number | null
+  pointsEarned: number
 }
 
 export interface MatchPredictionsInfo {
@@ -188,6 +189,7 @@ export async function getMatchOtherPredictions(
         outcome,
         home_goals_threshold,
         away_goals_threshold,
+        points_earned,
         users!inner (username)
       `)
       .eq('match_id', matchId)
@@ -207,6 +209,7 @@ export async function getMatchOtherPredictions(
       outcome: row.outcome as string | null,
       homeGoalsThreshold: row.home_goals_threshold as number | null,
       awayGoalsThreshold: row.away_goals_threshold as number | null,
+      pointsEarned: (row.points_earned as number) || 0,
     }
   })
 

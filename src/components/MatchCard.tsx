@@ -1,5 +1,6 @@
 import { getTeamByName } from '../lib/teams'
 import { formatDate, formatWeekday } from '../lib/format'
+import { GlassCard } from './GlassCard'
 
 interface MatchCardProps {
   matchId: string
@@ -45,12 +46,14 @@ export function MatchCard({
       )}
 
       <div className="match-card__meta">
+      <GlassCard>
         <span>{formatDate(date, 'short')}</span>
         <span className="match-card__meta-sep">·</span>
         <span>{formatWeekday(date, 'long')}</span>
         <span className="match-card__meta-sep">·</span>
         <span className="match-card__time">{time}</span>
-      </div>
+      </GlassCard>
+        </div>
 
       <div className="match-card__main">
         <div className="match-card__team">

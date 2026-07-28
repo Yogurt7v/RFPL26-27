@@ -56,7 +56,7 @@ export function PredictPage() {
   }, [user, match])
 
   useEffect(() => {
-    if (!user || !match || isMatchOpen(match)) return
+    if (!user || !match) return
 
     let cancelled = false
 
@@ -173,6 +173,7 @@ export function PredictPage() {
                 <span className="check__others-cell">Исход</span>
                 <span className="check__others-cell">Счёт</span>
                 <span className="check__others-cell">Порог</span>
+                <span className="check__others-cell">Очки</span>
               </div>
               {otherPredictions.map((p, i) => (
                 <div key={i} className="check__others-row">
@@ -188,6 +189,7 @@ export function PredictPage() {
                   <span className="check__others-cell">
                     {formatGoalsThreshold(p, match.homeTeam, match.awayTeam)}
                   </span>
+                  <span className="check__others-cell">{p.pointsEarned}</span>
                 </div>
               ))}
             </div>
@@ -215,6 +217,16 @@ export function PredictPage() {
         onSaved={() => navigate('/')}
         canEdit
       />
+      {otherCount > 0 && (
+        <div className="check" style={{ marginTop: '12px' }}>
+          <div className="check__header">
+            <span className="check__title">Другие игроки</span>
+          </div>
+          <p style={{ padding: '12px 16px', color: 'var(--color-secondary)', fontSize: 'var(--font-size-sm)', textAlign: 'center' }}>
+            {otherNames.join(', ')} {otherCount === 1 ? 'сделал' : 'сделали'} прогноз
+          </p>
+        </div>
+      )}
       <button
         className="btn btn--secondary"
         onClick={() => navigate('/')}
