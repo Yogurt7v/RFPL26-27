@@ -1,7 +1,4 @@
-function stripScripts(html: string): string {
-  return html.replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<noscript[\s\S]*?<\/noscript>/gi, '')
-}
+import { supabase } from './supabase'
 
 export interface Standing {
   position: number
@@ -18,63 +15,27 @@ export interface Standing {
 }
 
 export async function getStandings(): Promise<Standing[]> {
-  try {
-    const response = await fetch('/api/soccer365/competitions/13/')
-    const html = stripScripts(await response.text())
+  const { data, error } = await supabase
+    .from('standings')
+    .select('*')
+    .order('position', { ascending: true })
 
-    const standings: Standing[] = []
-
-    const tableStart = html.indexOf('id="competition_table"')
-    if (tableStart === -1) return []
-
-    const tableSection = html.substring(tableStart, tableStart + 10000)
-
-    const rowRegex = /<tr>([\s\S]*?)<\/tr>/g
-    let rowMatch
-    let position = 0
-
-    while ((rowMatch = rowRegex.exec(tableSection)) !== null) {
-      const rowHtml = rowMatch[1]
-
-      const teamMatch = rowHtml.match(/<a[^>]+href="\/clubs\/(\d+)\/"[^>]*>([^<]+)<\/a>/)
-      if (!teamMatch) continue
-
-      const teamId = parseInt(teamMatch[1])
-      const teamName = teamMatch[2].trim()
-
-      const cellRegex = /<td[^>]*class="al_c"[^>]*>([\s\S]*?)<\/td>/g
-      const values: number[] = []
-      let cellMatch
-
-      while ((cellMatch = cellRegex.exec(rowHtml)) !== null) {
-        const text = cellMatch[1].replace(/<[^>]*>/g, '').trim()
-        const num = parseInt(text)
-        if (!isNaN(num)) {
-          values.push(num)
-        }
-      }
-
-      if (values.length >= 8) {
-        position++
-        standings.push({
-          position,
-          teamName,
-          teamId,
-          played: values[0],
-          won: values[1],
-          drawn: values[2],
-          lost: values[3],
-          goalsFor: values[4],
-          goalsAgainst: values[5],
-          goalDifference: values[6],
-          points: values[7],
-        })
-      }
-    }
-
-    return standings
-  } catch (error) {
+  if (error) {
     console.error('Error fetching standings:', error)
     return []
   }
+
+  return (data as Record<string, unknown>[]).map(row => ({
+    position: row.position as number,
+    teamName: row.team_name as string,
+    teamId: row.team_id as number,
+    played: row.played as number,
+    won: row.won as number,
+    drawn: row.drawn as number,
+    lost: row.lost as number,
+    goalsFor: row.goals_for as number,
+    goalsAgainst: row.goals_against as number,
+    goalDifference: row.goal_difference as number,
+    points: row.points as number,
+  }))
 }
