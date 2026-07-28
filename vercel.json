@@ -1,13 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "source": "/api/soccer365/(.*)",
+      "destination": "https://soccer365.ru/$1"
     }
-  ],
-    "functions": {
-      "api/**/*.js": {
-        "maxDuration": 30
-      }
-    }
+  ]
 }
