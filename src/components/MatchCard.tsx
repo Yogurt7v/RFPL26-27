@@ -1,10 +1,5 @@
-import { useState } from 'react'
 import { getTeamByName } from '../lib/teams'
 import { formatDate, formatWeekday } from '../lib/format'
-import { StarIcon } from './Icons'
-import { toggleFavorite, getFavoritesForMatches } from '../api/favorites'
-import { useAuth } from '../hooks/useAuth'
-import type { Favorite } from '../api/favorites'
 
 interface MatchCardProps {
   matchId: string
@@ -18,9 +13,6 @@ interface MatchCardProps {
   onClick?: () => void
   isNext?: boolean
   id?: string
-  favorites: Favorite[]
-  isFav: boolean
-  onFavoritesChanged: (matchId: string, favorites: Favorite[], isFav: boolean) => void
 }
 
 export function MatchCard({
@@ -35,27 +27,9 @@ export function MatchCard({
   onClick,
   isNext = false,
   id,
-  favorites,
-  isFav,
-  onFavoritesChanged,
 }: MatchCardProps) {
-  const { user } = useAuth()
-  const [showFavTooltip, setShowFavTooltip] = useState(false)
-
   const home = getTeamByName(homeTeam)
   const away = getTeamByName(awayTeam)
-
-  const favUsers = favorites.map(f => f.username || 'Аноним').filter(Boolean)
-
-  const handleToggleFavorite = async () => {
-    if (!user) return
-    const newState = await toggleFavorite(user.id, matchId)
-
-    const map = await getFavoritesForMatches([matchId])
-    const updated = map.get(matchId) || []
-
-    onFavoritesChanged(matchId, updated, newState)
-  }
 
   return (
     <div
@@ -105,29 +79,7 @@ export function MatchCard({
           {status === 'LIVE' && 'Идёт'}
         </span>
 
-        {user && (
-          <div
-            className="match-card__fav-wrapper"
-            onMouseEnter={() => setShowFavTooltip(true)}
-            onMouseLeave={() => setShowFavTooltip(false)}
-          >
-            <button
-              className={`match-card__fav-btn ${isFav ? 'match-card__fav-btn--active' : ''}`}
-              onClick={(e) => { e.stopPropagation(); handleToggleFavorite() }}
-              title={isFav ? 'Убрать из избранного' : 'Добавить в избранное'}
-            >
-              <StarIcon size={16} filled={isFav} />
-              {favUsers.length > 0 && (
-                <span className="match-card__fav-count">{favUsers.length}</span>
-              )}
-            </button>
-            {showFavTooltip && favUsers.length > 0 && (
-              <div className="match-card__fav-tooltip">
-                {favUsers.join(', ')}
-              </div>
-            )}
-          </div>
-        )}
+
       </div>
     </div>
   )
