@@ -140,6 +140,32 @@ export async function savePrediction(
   return true
 }
 
+export async function deletePrediction(
+  userId: string,
+  homeTeam: string,
+  awayTeam: string,
+  round: number
+): Promise<boolean> {
+  const matchId = await findMatchId(homeTeam, awayTeam, round)
+  if (matchId == null) {
+    console.error('Match not found in Supabase:', homeTeam, 'vs', awayTeam, 'round', round)
+    return false
+  }
+
+  const { error } = await supabase
+    .from('predictions')
+    .delete()
+    .eq('user_id', userId)
+    .eq('match_id', matchId)
+
+  if (error) {
+    console.error('Error deleting prediction:', error)
+    return false
+  }
+
+  return true
+}
+
 export async function getUserPredictions(userId: string): Promise<UserPrediction[]> {
   const { data, error } = await withRetry(() =>
     supabase
@@ -206,6 +232,18 @@ export interface MatchPredictionsInfo {
   count: number
   usernames: string[]
   predictions: OtherPrediction[]
+}
+
+export async function getUserPredictedMatchKeys(userId: string): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from('predictions')
+    .select('matches!inner(round, home_team, away_team)')
+    .eq('user_id', userId)
+
+  if (error || !data) return new Set()
+  return new Set(
+    (data as any[]).map(d => `${d.matches.round}|${d.matches.home_team}|${d.matches.away_team}`)
+  )
 }
 
 export async function getMatchOtherPredictions(

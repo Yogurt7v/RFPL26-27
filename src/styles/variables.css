@@ -7,14 +7,18 @@
   --font-size-lg: 1.125rem;
   --font-size-xl: 1.25rem;
   --font-size-2xl: 1.5rem;
+  --font-size-3xl: 2rem;
+  --font-size-4xl: 2.5rem;
 
   /* Палитра РПЛ */
-  --color-primary: #2580C3;
-  --color-primary-hover: #1D6BA3;
+  --color-primary: #1A72B5;
+  --color-primary-hover: #155D94;
   --color-primary-light: #E8F2FA;
   --color-accent: #E6333A;
   --color-accent-hover: #CC282F;
   --color-dark: #000058;
+  --color-gold: #D4A017;
+  --color-amber: #D97706;
 
   /* Дополнительные токены */
   --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);

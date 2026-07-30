@@ -5,8 +5,6 @@ interface LeaderboardTableProps {
   currentUserId?: string
 }
 
-const MEDALS = ['🥇', '🥈', '🥉']
-
 export function LeaderboardTable({ currentUserId }: LeaderboardTableProps) {
   const { data: entries = [], isLoading, error } = useQuery({
     queryKey: ['leaderboard'],
@@ -17,9 +15,7 @@ export function LeaderboardTable({ currentUserId }: LeaderboardTableProps) {
   if (isLoading) {
     return (
       <div className="leaderboard-table">
-        <div className="leaderboard-table__header">
-          <span className="leaderboard-table__title">Таблица лидеров</span>
-        </div>
+        <h2 className="leaderboard-table__title">Таблица лидеров</h2>
         <table className="leaderboard-table__table">
           <thead>
             <tr>
@@ -64,9 +60,7 @@ export function LeaderboardTable({ currentUserId }: LeaderboardTableProps) {
 
   return (
     <div className="leaderboard-table">
-      <div className="leaderboard-table__header">
-        <span className="leaderboard-table__title">Таблица лидеров</span>
-      </div>
+      <h2 className="leaderboard-table__title">Таблица лидеров</h2>
 
       <table className="leaderboard-table__table content-enter">
         <thead>
@@ -88,17 +82,13 @@ export function LeaderboardTable({ currentUserId }: LeaderboardTableProps) {
               }`}
             >
               <td className="leaderboard-table__td leaderboard-table__td--pos">
-                {index < 3 ? (
-                  <span className="leaderboard-table__medal">{MEDALS[index]}</span>
-                ) : (
-                  index + 1
-                )}
+                {index + 1}
               </td>
               <td className="leaderboard-table__td leaderboard-table__td--user">
                 {entry.username}
               </td>
               <td className="leaderboard-table__td leaderboard-table__td--pts">
-                <strong>{entry.totalPoints}</strong>
+                {entry.totalPoints}
               </td>
               <td className="leaderboard-table__td">{entry.totalPredictions}</td>
               <td className="leaderboard-table__td">{entry.exactScores}</td>
@@ -107,8 +97,6 @@ export function LeaderboardTable({ currentUserId }: LeaderboardTableProps) {
           ))}
         </tbody>
       </table>
-
-      <div className="leaderboard-table__zigzag" />
     </div>
   )
 }

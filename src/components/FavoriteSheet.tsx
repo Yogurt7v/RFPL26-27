@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { getMatchFavorites } from '../api/favorites'
+import { useAuth } from '../hooks/useAuth'
 
 interface FavoriteSheetProps {
   matchId: string
@@ -8,6 +9,7 @@ interface FavoriteSheetProps {
 }
 
 export function FavoriteSheet({ matchId, isOpen, onClose }: FavoriteSheetProps) {
+  const { user } = useAuth()
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['favorites', 'match', matchId],
     queryFn: () => getMatchFavorites(matchId),
@@ -36,7 +38,7 @@ export function FavoriteSheet({ matchId, isOpen, onClose }: FavoriteSheetProps) 
             users.map(u => (
               <div key={u.userId} className="favorite-sheet__user">
                 <span className="favorite-sheet__starlet">★</span>
-                <span>{u.username}</span>
+                <span>{u.username}{u.userId === user?.id ? <span className="favorite-sheet__you"> (это вы)</span> : null}</span>
               </div>
             ))
           )}

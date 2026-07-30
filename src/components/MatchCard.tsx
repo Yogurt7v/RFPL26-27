@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { getTeamByName } from '../lib/teams'
 import { formatDate, formatWeekday } from '../lib/format'
 import { GlassCard } from './GlassCard'
@@ -24,6 +25,7 @@ interface MatchCardProps {
   favoriteCount?: number
   starlets?: Starlet[]
   glowLevel?: 0 | 1 | 2 | 3
+  hasPredicted?: boolean
   onFavoriteToggle?: () => void
   onFavoriteClick?: () => void
 }
@@ -44,6 +46,7 @@ export function MatchCard({
   favoriteCount = 0,
   starlets = [],
   glowLevel = 0,
+  hasPredicted = false,
   onFavoriteToggle,
   onFavoriteClick,
 }: MatchCardProps) {
@@ -51,6 +54,14 @@ export function MatchCard({
   const away = getTeamByName(awayTeam)
 
   const glowClass = glowLevel > 0 ? ` match-card--glow-${glowLevel}` : ''
+  const [starAnimating, setStarAnimating] = useState(false)
+
+  const handleStarToggle = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onFavoriteToggle()
+    setStarAnimating(true)
+    setTimeout(() => setStarAnimating(false), 300)
+  }
 
   return (
     <div
@@ -58,6 +69,8 @@ export function MatchCard({
       className={`match-card match-card--${status.toLowerCase()}${isNext ? ' match-card--next' : ''}${glowClass}`}
       {...(onClick ? { onClick, role: 'button' as const, tabIndex: 0 } : {})}
     >
+      {hasPredicted && <div className="match-card__predicted">✓</div>}
+
       {home?.logoLarge && (
         <img className="match-card__watermark match-card__watermark--home" src={home.logoLarge} alt="" />
       )}
@@ -88,11 +101,8 @@ export function MatchCard({
           )}
 
           <button
-            className={`match-card__star-btn ${isFavorite ? 'match-card__star-btn--active' : ''}`}
-            onClick={e => {
-              e.stopPropagation()
-              onFavoriteToggle()
-            }}
+            className={`match-card__star-btn ${isFavorite ? 'match-card__star-btn--active' : ''}${starAnimating ? ' match-card__star-btn--pop' : ''}`}
+            onClick={handleStarToggle}
             aria-label={isFavorite ? 'Убрать из избранного' : 'Добавить в избранное'}
           >
             ★
@@ -102,8 +112,8 @@ export function MatchCard({
 
       <div className="match-card__meta">
       <GlassCard>
-        <span>{formatDate(date, 'short')}</span>
-        <span className="match-card__meta-sep">·</span>
+        {/*<span>{formatDate(date, 'short')}</span>*/}
+        {/*<span className="match-card__meta-sep">·</span>*/}
         <span>{formatWeekday(date, 'long')}</span>
         <span className="match-card__meta-sep">·</span>
         <span className="match-card__time">{time}</span>
@@ -133,9 +143,12 @@ export function MatchCard({
       </div>
 
       <div className="match-card__footer">
-        <span className="match-card__status">
-          {status === 'LIVE' && 'Идёт'}
-        </span>
+        {status !== 'SCHEDULED' && (
+          <span className="match-card__status">
+            <span className="match-card__status-dot" />
+            {status === 'LIVE' ? 'LIVE' : 'FT'}
+          </span>
+        )}
       </div>
     </div>
   )

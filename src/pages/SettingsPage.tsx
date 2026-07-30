@@ -54,9 +54,7 @@ export function SettingsPage() {
   return (
     <div className="page">
       <div className="settings">
-        <div className="settings__header">
-          <span className="settings__title">Настройки</span>
-        </div>
+        <h2 className="settings__title">Настройки</h2>
 
         <div className="settings-section">
           <div className="settings-section__label">Аккаунт</div>
@@ -167,9 +165,6 @@ export function SettingsPage() {
           <span className="settings-hint">{FONT_SIZE_LABELS[fontSize]}</span>
         </div>
       </div>
-
-      <div className="settings__zigzag" />
-
 
       {user && <PredictionResults userId={user.id} />}
 

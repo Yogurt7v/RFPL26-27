@@ -12,9 +12,7 @@ export function StandingsTable() {
   if (isLoading) {
     return (
       <div className="standings-table">
-        <div className="standings-table__header">
-          <span className="standings-table__title">Турнирная таблица</span>
-        </div>
+        <h2 className="standings-table__title">Турнирная таблица</h2>
         <div className="content-enter" style={{ overflowX: 'auto' }}>
           <table className="standings-table__table">
             <thead>
@@ -58,7 +56,6 @@ export function StandingsTable() {
             </tbody>
           </table>
         </div>
-        <div className="standings-table__zigzag" />
       </div>
     )
   }
@@ -71,9 +68,7 @@ export function StandingsTable() {
 
   return (
     <div className="standings-table">
-      <div className="standings-table__header">
-        <span className="standings-table__title">Турнирная таблица</span>
-      </div>
+      <h2 className="standings-table__title">Турнирная таблица</h2>
 
       <div className="content-enter" style={{ overflowX: 'auto' }}>
         <table className="standings-table__table">
@@ -94,11 +89,16 @@ export function StandingsTable() {
           <tbody>
             {standings.map(row => {
               const team = getTeamByName(row.teamName)
-              const posClass = row.position <= 3 ? `standings-table__td--pos--${row.position}` : ''
               return (
                 <tr key={row.teamId} className="standings-table__row">
-                  <td className={`standings-table__td standings-table__td--pos ${posClass}`}>
-                    {row.position}
+                  <td className="standings-table__td standings-table__td--pos">
+                    {row.position <= 3 ? (
+                      <span className={`standings-table__pos-badge standings-table__pos-badge--${row.position}`}>
+                        {row.position}
+                      </span>
+                    ) : (
+                      row.position
+                    )}
                   </td>
                   <td className="standings-table__td standings-table__td--team">
                     <span className="standings-table__team-name">
@@ -113,7 +113,7 @@ export function StandingsTable() {
                     </span>
                   </td>
                   <td className="standings-table__td standings-table__td--pts">
-                    <strong>{row.points}</strong>
+                    {row.points}
                   </td>
                   <td className="standings-table__td">{row.played}</td>
                   <td className="standings-table__td">{row.won}</td>
@@ -130,8 +130,6 @@ export function StandingsTable() {
           </tbody>
         </table>
       </div>
-
-      <div className="standings-table__zigzag" />
     </div>
   )
 }

@@ -30,21 +30,6 @@
     padding-bottom: calc(var(--bottom-nav-height) + var(--spacing-lg));
   }
 
-  .match-list__header {
-    position: fixed;
-    top: var(--header-height);
-    left: 50%;
-    transform: translateX(-50%);
-    width: min(90%, 1400px);
-    z-index: 90;
-    margin-bottom: 0;
-    background: var(--color-bg);
-  }
-
-  .match-list {
-    padding-top: 48px;
-  }
-
   .match-list__grid {
     display: flex;
     flex-direction: column;

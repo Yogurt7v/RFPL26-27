@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { getTeamByName } from '../lib/teams'
 import { validatePrediction, type Outcome } from '../lib/scoring'
+import { Modal } from './Modal'
 
 export interface PredictionFormData {
   predictedHomeScore: number | null
@@ -20,6 +21,7 @@ interface PredictionFormProps {
   initialValues?: PredictionFormData | null
   onSubmit: (prediction: PredictionFormData) => Promise<boolean>
   onSaved?: () => void
+  onDelete?: () => void
   canEdit?: boolean
 }
 
@@ -37,6 +39,7 @@ export function PredictionForm({
   onSubmit,
   onSaved,
   canEdit = false,
+  onDelete,
 }: PredictionFormProps) {
   const [homeScore, setHomeScore] = useState<number | ''>(initialValues?.predictedHomeScore ?? '')
   const [awayScore, setAwayScore] = useState<number | ''>(initialValues?.predictedAwayScore ?? '')
@@ -45,6 +48,7 @@ export function PredictionForm({
   const [awayGoalsThreshold, setAwayGoalsThreshold] = useState<number | ''>(initialValues?.awayGoalsThreshold ?? '')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSaved, setIsSaved] = useState(!!initialValues)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
   const home = getTeamByName(homeTeam)
@@ -93,7 +97,7 @@ export function PredictionForm({
   /* ─── Saved state ──────────────────────── */
   if (isSaved) {
     return (
-      <div className="check check--saved">
+      <><div className="check check--saved">
         <div className="check__header check__header--success">
           <span className="check__title">Прогноз принят</span>
         </div>
@@ -139,17 +143,40 @@ export function PredictionForm({
           </>
         )}
 
-        {onSaved && (
+        {onSaved && canEdit && (
           <div className="check__footer">
-            {canEdit && (
+            <div className="check__footer-row">
               <button type="button" className="check__submit check__submit--edit" onClick={() => setIsSaved(false)}>
                 Изменить прогноз
               </button>
-            )}
-            <button type="button" className="check__submit" onClick={onSaved}>На главную</button>
+              {onDelete && !isFinished && (
+                <button
+                  type="button"
+                  className="check__delete-btn"
+                  onClick={() => setShowDeleteModal(true)}
+                  aria-label="Удалить прогноз"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 6h18" />
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                    <line x1="10" y1="11" x2="10" y2="17" />
+                    <line x1="14" y1="11" x2="14" y2="17" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>
+
+      <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="Удалить прогноз">
+        <p className="modal__text">Вы уверены, что хотите удалить прогноз на матч {homeTeam} — {awayTeam}?</p>
+        <div className="modal__actions">
+          <button type="button" className="btn btn--secondary" onClick={() => setShowDeleteModal(false)}>Отмена</button>
+          <button type="button" className="btn btn--primary btn--danger" onClick={() => { setShowDeleteModal(false); onDelete?.() }}>Удалить</button>
+        </div>
+      </Modal></>
     )
   }
 
@@ -205,12 +232,12 @@ export function PredictionForm({
           <div className="check__section-label">Точный счёт</div>
           <div className="check__score-selects">
             <select value={homeScore} onChange={e => setHomeScore(e.target.value === '' ? '' : parseInt(e.target.value))} className="check__score-select">
-              <option value="">—</option>
+              <option value="" disabled>—</option>
               {SCORE_OPTIONS.map(n => <option key={n} value={n}>{n}</option>)}
             </select>
             <span className="check__score-sep">:</span>
             <select value={awayScore} onChange={e => setAwayScore(e.target.value === '' ? '' : parseInt(e.target.value))} className="check__score-select">
-              <option value="">—</option>
+              <option value="" disabled>—</option>
               {SCORE_OPTIONS.map(n => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
@@ -224,7 +251,7 @@ export function PredictionForm({
               <span className="check__goals-label">{homeTeam}</span>
               <span className="check__goals-text">забьёт ≥</span>
               <select value={homeGoalsThreshold} onChange={e => setHomeGoalsThreshold(e.target.value === '' ? '' : parseInt(e.target.value))} className="check__goals-select">
-                <option value="">—</option>
+                <option value="" disabled>—</option>
                 {GOALS_OPTIONS.map(n => <option key={n} value={n}>{n}</option>)}
               </select>
               <span className="check__goals-text">голов</span>
@@ -233,7 +260,7 @@ export function PredictionForm({
               <span className="check__goals-label">{awayTeam}</span>
               <span className="check__goals-text">забьёт ≥</span>
               <select value={awayGoalsThreshold} onChange={e => setAwayGoalsThreshold(e.target.value === '' ? '' : parseInt(e.target.value))} className="check__goals-select">
-                <option value="">—</option>
+                <option value="" disabled>—</option>
                 {GOALS_OPTIONS.map(n => <option key={n} value={n}>{n}</option>)}
               </select>
               <span className="check__goals-text">голов</span>

@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useLiveMatches } from '../hooks/useLiveMatches'
 import { useFavorites } from '../hooks/useFavorites'
 import { useAuth } from '../hooks/useAuth'
@@ -9,6 +10,7 @@ import { teams } from '../lib/teams'
 import { formatDate, formatWeekday } from '../lib/format'
 import { MatchCard } from './MatchCard'
 import { FavoriteSheet } from './FavoriteSheet'
+import { getUserPredictedMatchKeys } from '../api/predictions'
 
 interface MatchListProps {
   onPredict?: (matchId: string) => void
@@ -75,6 +77,13 @@ export function MatchList({ onPredict }: MatchListProps) {
     }
     setSearchParams(next, { replace: true })
   }
+
+  const { data: predictedKeys = new Set<string>() } = useQuery({
+    queryKey: ['predictions', 'keys', user?.id],
+    queryFn: () => getUserPredictedMatchKeys(user!.id),
+    enabled: !!user?.id,
+    staleTime: 60_000,
+  })
 
   const { matches: liveMatches } = useLiveMatches(selectedRound, selectedTeam)
 
@@ -148,50 +157,59 @@ export function MatchList({ onPredict }: MatchListProps) {
     setSheetMatchId(matchId)
   }, [])
 
+  const liveCount = allMatches.filter(m => m.status === 'LIVE').length
+
   return (
     <div className="match-list">
-      <div className="match-list__header">
-        <h2>Матчи</h2>
-        <div className="match-list__filters">
-          {(selectedTeam || selectedRound !== initialRoundRef.current) && (
-            <button
-              className="match-list__reset"
-              onClick={() => {
-                const generalNext = getNextMatch()
-                setNextMatchId(generalNext?.id)
-                setSearchParams({}, { replace: true })
-              }}
-              title="Сбросить фильтры"
-            >
-              ×
-            </button>
-          )}
-          {!selectedTeam && (
-            <select
-              value={selectedRound}
-              onChange={e => setFilter({ round: Number(e.target.value) })}
-              className="match-list__select"
-            >
-              {rounds.map(r => (
-                <option key={r.number} value={r.number}>
-                  Тур {r.number}
-                </option>
-              ))}
-            </select>
-          )}
+      <div className="round-header">
+        <div className="round-header__round">Тур {selectedRound}</div>
+        {/*<div className="round-header__meta">
+          {liveCount > 0 && <span>{liveCount} матча идёт · </span>}
+          {allMatches.length} матчей
+        </div>*/}
+        <div className="round-header__accent" />
+      </div>
+
+      <div className="match-list__filters">
+
+        {!selectedTeam && (
           <select
-            value={selectedTeam}
-            onChange={e => setFilter({ team: e.target.value })}
+            value={selectedRound}
+            onChange={e => setFilter({ round: Number(e.target.value) })}
             className="match-list__select"
           >
-            <option value="">Все команды</option>
-            {teams.map(t => (
-              <option key={t.id} value={t.name}>
-                {t.name}
+            {rounds.map(r => (
+              <option key={r.number} value={r.number}>
+                Тур {r.number}
               </option>
             ))}
           </select>
-        </div>
+        )}
+        <select
+          value={selectedTeam}
+          onChange={e => setFilter({ team: e.target.value })}
+          className="match-list__select"
+        >
+          <option value="">Все команды</option>
+          {teams.map(t => (
+            <option key={t.id} value={t.name}>
+              {t.name}
+            </option>
+          ))}
+        </select>
+        {(selectedTeam || selectedRound !== initialRoundRef.current) && (
+          <button
+            className="match-list__reset"
+            onClick={() => {
+              const generalNext = getNextMatch()
+              setNextMatchId(generalNext?.id)
+              setSearchParams({}, { replace: true })
+            }}
+            title="Сбросить фильтры"
+          >
+            ×
+          </button>
+        )}
       </div>
 
       <div className="match-list__grid">
@@ -204,32 +222,36 @@ export function MatchList({ onPredict }: MatchListProps) {
         ) : (
           groupedMatches.map(group => (
             <div key={group.label} className="match-list__group">
-              <h3 className="match-list__date-header">{group.label}</h3>
+              {(selectedTeam || selectedRound !== initialRoundRef.current) && (
+                <h3 className="match-list__date-header">{group.label}</h3>
+              )}
               {group.days.map(day => (
                 <div key={day.dateKey} className="match-list__day-group">
                   <h4 className="match-list__day-header">{day.dateLabel}</h4>
                   <div className="match-list__group-items">
-                    {day.matches.map(match => (
-                      <MatchCard
-                        key={match.id}
-                        matchId={match.id}
-                        homeTeam={match.homeTeam}
-                        awayTeam={match.awayTeam}
-                        date={match.date}
-                        time={match.time}
-                        homeScore={match.homeScore}
-                        awayScore={match.awayScore}
-                        status={match.status}
-                        isNext={match.id === nextMatchId}
-                        id={match.id === nextMatchId ? `match-${match.id}` : undefined}
-                        onClick={onPredict ? () => onPredict(match.id) : undefined}
-                        isFavorite={isFavorite(match.id)}
-                        favoriteCount={favoriteCount(match.id)}
-                        starlets={starlets(match.id)}
-                        glowLevel={glowLevel(match.id)}
-                        onFavoriteToggle={user ? () => toggleFavorite(match.id) : undefined}
-                        onFavoriteClick={() => handleFavoriteClick(match.id)}
-                      />
+                    {day.matches.map((match, idx) => (
+                      <div key={match.id} className="match-card-wrap" style={{ animationDelay: `${idx * 80}ms` }}>
+                        <MatchCard
+                          matchId={match.id}
+                          homeTeam={match.homeTeam}
+                          awayTeam={match.awayTeam}
+                          date={match.date}
+                          time={match.time}
+                          homeScore={match.homeScore}
+                          awayScore={match.awayScore}
+                          status={match.status}
+                          isNext={match.id === nextMatchId}
+                          id={match.id === nextMatchId ? `match-${match.id}` : undefined}
+                          onClick={onPredict ? () => onPredict(match.id) : undefined}
+                          isFavorite={isFavorite(match.id)}
+                          favoriteCount={favoriteCount(match.id)}
+                          starlets={starlets(match.id)}
+                          glowLevel={glowLevel(match.id)}
+                          onFavoriteToggle={user ? () => toggleFavorite(match.id) : undefined}
+                          onFavoriteClick={() => handleFavoriteClick(match.id)}
+                          hasPredicted={predictedKeys.has(`${match.round}|${match.homeTeam}|${match.awayTeam}`)}
+                        />
+                      </div>
                     ))}
                   </div>
                 </div>

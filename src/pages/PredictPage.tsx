@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PredictionForm, type PredictionFormData } from '../components/PredictionForm'
-import { savePrediction, getPredictionForMatch, getMatchInfo, getMatchOtherPredictions, type OtherPrediction } from '../api/predictions'
+import { savePrediction, deletePrediction, getPredictionForMatch, getMatchInfo, getMatchOtherPredictions, type OtherPrediction } from '../api/predictions'
 import { schedule, isMatchOpen } from '../lib/schedule'
 import { useAuth } from '../hooks/useAuth'
 
@@ -59,6 +59,17 @@ export function PredictPage() {
   const saveMutation = useMutation({
     mutationFn: (prediction: PredictionFormData) =>
       savePrediction(user!.id, match!.homeTeam, match!.awayTeam, match!.round, prediction),
+  })
+
+  const queryClient = useQueryClient()
+
+  const deleteMutation = useMutation({
+    mutationFn: () =>
+      deletePrediction(user!.id, match!.homeTeam, match!.awayTeam, match!.round),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['predictions'] })
+      goBack()
+    },
   })
 
   const handleSubmit = async (prediction: PredictionFormData): Promise<boolean> => {
@@ -166,80 +177,64 @@ export function PredictPage() {
               isFinished={finished}
               actualHomeScore={scores?.home ?? null}
               actualAwayScore={scores?.away ?? null}
+              onDelete={deleteMutation.mutate}
             />
           </>
         ) : (
-          <div className="check">
-            <div className="check__header">
-              <span className="check__title">Прогноз не сделан</span>
+          <div className="predict-missed">
+            <div className="predict-missed__score">
+              <span>{match.homeTeam}</span>
+              {scores?.home != null && scores?.away != null && (
+                <span className="predict-missed__score-value">{scores.home}:{scores.away}</span>
+              )}
+              <span className="predict-missed__vs">vs</span>
+              <span>{match.awayTeam}</span>
             </div>
-            <div className="check__match">
-              <div className="check__teams">
-                <span>{match.homeTeam}</span>
-                {scores?.home != null && scores?.away != null && (
-                  <span className="check__score">{scores.home}:{scores.away}</span>
-                )}
-                <span className="check__vs">vs</span>
-                <span>{match.awayTeam}</span>
-              </div>
-            </div>
-            <div className="check__divider" />
-            <p style={{ padding: '12px 16px', color: 'var(--color-secondary)', fontSize: 'var(--font-size-sm)', textAlign: 'center' }}>
-              Вы не сделали прогноз на этот матч.
-            </p>
+            <p className="predict-missed__text">Вы не сделали прогноз на этот матч.</p>
           </div>
         )}
 
          {otherCount > 0 && !finished && (
-           <div className="check" style={{ marginTop: '12px' }}>
-             <div className="check__header">
-               <span className="check__title">Другие игроки</span>
-             </div>
-             <p style={{ padding: '12px 16px', color: 'var(--color-secondary)', fontSize: 'var(--font-size-sm)', textAlign: 'center' }}>
-               {otherNames.join(', ')} {otherCount === 1 ? 'сделал' : 'сделали'} прогноз
-             </p>
+           <div className="predict-others">
+             <span className="predict-others__dot" />
+             <span>{otherNames.join(', ')} {otherCount === 1 ? 'сделал' : 'сделали'} прогноз</span>
            </div>
          )}
-
-         {otherCount > 0 && finished && (
-           <div className="check" style={{ marginTop: '12px' }}>
-             <div className="check__header">
-               <span className="check__title">Прогнозы других игроков</span>
-             </div>
-             <div className="check__others">
-               <div className="check__others-header">
-                 <span className="check__others-cell">Игрок</span>
-                 <span className="check__others-cell">Исход</span>
-                 <span className="check__others-cell">Счёт</span>
-                 <span className="check__others-cell">Порог</span>
-                 <span className="check__others-cell">Очки</span>
-               </div>
-               {otherPredictions.map((p, i) => (
-                 <div key={i} className="check__others-row">
-                   <span className="check__others-cell">{p.username}</span>
-                   <span className="check__others-cell">
-                     {p.outcome ? (p.outcome === '1' ? 'П1' : p.outcome === 'X' ? 'Ничья' : 'П2') : '—'}
-                   </span>
-                   <span className="check__others-cell">
-                     {p.predictedHomeScore != null && p.predictedAwayScore != null
-                       ? `${p.predictedHomeScore}:${p.predictedAwayScore}`
-                       : '—'}
-                   </span>
-                   <span className="check__others-cell">
-                     {formatGoalsThreshold(p, match.homeTeam, match.awayTeam)}
-                   </span>
-                   <span className="check__others-cell">{p.pointsEarned}</span>
-                 </div>
-               ))}
-             </div>
-           </div>
-         )}
-
-         <button
-           className="btn btn--secondary"
-           onClick={goBack}
-           style={{ marginTop: '12px', width: '100%' }}
-         >
+ 
+          {otherCount > 0 && finished && (
+            <div className="predict-others-table">
+              <h3 className="predict-others-table__title">Прогнозы других игроков</h3>
+              <div className="predict-others-table__header">
+                <span>Игрок</span>
+                <span>Исход</span>
+                <span>Счёт</span>
+                <span>Порог</span>
+                <span>Очки</span>
+              </div>
+              {otherPredictions.map((p, i) => (
+                <div key={i} className="predict-others-table__row">
+                  <span className="predict-others-table__cell">{p.username}</span>
+                  <span className="predict-others-table__cell">
+                    {p.outcome ? (p.outcome === '1' ? 'П1' : p.outcome === 'X' ? 'Ничья' : 'П2') : '—'}
+                  </span>
+                  <span className="predict-others-table__cell">
+                    {p.predictedHomeScore != null && p.predictedAwayScore != null
+                      ? `${p.predictedHomeScore}:${p.predictedAwayScore}`
+                      : '—'}
+                  </span>
+                  <span className="predict-others-table__cell">
+                    {formatGoalsThreshold(p, match.homeTeam, match.awayTeam)}
+                  </span>
+                  <span className="predict-others-table__cell">{p.pointsEarned}</span>
+                </div>
+              ))}
+            </div>
+          )}
+ 
+          <button
+            className="btn btn--secondary predict-page__back"
+            onClick={goBack}
+          >
            Назад к матчам
          </button>
       </div>
@@ -257,21 +252,17 @@ export function PredictPage() {
         canEdit
         actualHomeScore={scores?.home ?? null}
         actualAwayScore={scores?.away ?? null}
+        onDelete={deleteMutation.mutate}
       />
       {otherCount > 0 && (
-        <div className="check" style={{ marginTop: '12px' }}>
-          <div className="check__header">
-            <span className="check__title">Другие игроки</span>
-          </div>
-          <p style={{ padding: '12px 16px', color: 'var(--color-secondary)', fontSize: 'var(--font-size-sm)', textAlign: 'center' }}>
-            {otherNames.join(', ')} {otherCount === 1 ? 'сделал' : 'сделали'} прогноз
-          </p>
+        <div className="predict-others">
+          <span className="predict-others__dot" />
+          <span>{otherNames.join(', ')} {otherCount === 1 ? 'сделал' : 'сделали'} прогноз</span>
         </div>
       )}
       <button
-        className="btn btn--secondary"
+        className="btn btn--secondary predict-page__back"
         onClick={goBack}
-        style={{ marginTop: '16px', width: '100%' }}
       >
         Назад к матчам
       </button>
