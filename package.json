@@ -1,6 +1,6 @@
 {
   "name": "rfpl26-27",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Прогнозы матчей РПЛ 2026/2027",
   "type": "module",
   "scripts": {
