@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { getUserPredictions, type UserPrediction } from '../api/predictions'
 import { getTeamByName } from '../lib/teams'
 import { formatScore, formatDate } from '../lib/format'
-import { Spinner } from './Spinner'
 import { GlassCard } from './GlassCard'
 import { schedule } from '../lib/schedule'
 
@@ -56,7 +55,37 @@ export function PredictionResults({ userId }: PredictionResultsProps) {
   }, [userId])
 
   if (isLoading) {
-    return <div className="prediction-results"><Spinner /></div>
+    return (
+      <div className="prediction-results">
+        <div className="prediction-results__header">
+          <span className="prediction-results__title">Мои прогнозы</span>
+        </div>
+        <div className="prediction-results__total">
+          <div className="skeleton" style={{ width: 120, height: 18, margin: '0 auto' }} />
+        </div>
+        <div className="prediction-results__list">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="prediction-results__item">
+              <div className="prediction-results__skeleton-card">
+                <div className="prediction-results__skeleton-top">
+                  <div className="skeleton" style={{ width: 24, height: 24, borderRadius: '50%' }} />
+                  <div className="skeleton" style={{ width: 80, height: 16 }} />
+                  <div className="skeleton" style={{ width: 20, height: 16 }} />
+                  <div className="skeleton" style={{ width: 80, height: 16 }} />
+                  <div className="skeleton" style={{ width: 24, height: 24, borderRadius: '50%' }} />
+                  <div className="skeleton" style={{ width: 60, height: 14, marginLeft: 'auto' }} />
+                </div>
+                <div className="prediction-results__skeleton-bottom">
+                  <div className="skeleton" style={{ width: 140, height: 14 }} />
+                  <div className="skeleton" style={{ width: 140, height: 14 }} />
+                  <div className="skeleton" style={{ width: 80, height: 14 }} />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
   }
 
   if (error) {

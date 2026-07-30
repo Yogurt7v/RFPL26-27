@@ -1,72 +1,55 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { MatchCard } from './MatchCard'
-import { Spinner } from './Spinner'
-import { schedule, getNextMatch, getRoundByMatchId } from '../lib/schedule'
-import { rounds } from '../lib/rounds'
+import { useLiveMatches } from '../hooks/useLiveMatches'
+import { useFavorites } from '../hooks/useFavorites'
+import { useAuth } from '../hooks/useAuth'
+import { useScrollToElement } from '../hooks/useScrollToElement'
+import { schedule, getMatchesByTeam, getNextMatch, getRoundByMatchId } from '../lib/schedule'
 import { teams } from '../lib/teams'
 import { formatDate, formatWeekday } from '../lib/format'
-import { useScrollToElement } from '../hooks/useScrollToElement'
-import { useLiveMatches } from '../hooks/useLiveMatches'
-import type { Match } from '../api/matches'
+import { MatchCard } from './MatchCard'
+import { FavoriteSheet } from './FavoriteSheet'
 
 interface MatchListProps {
   onPredict?: (matchId: string) => void
 }
 
-interface DayGroup {
-  dateKey: string
-  dateLabel: string
-  matches: Match[]
-}
-
 interface RoundGroup {
   label: string
-  days: DayGroup[]
+  days: {
+    dateKey: string
+    dateLabel: string
+    matches: ReturnType<typeof scheduleToMatch>[]
+  }[]
 }
 
-function scheduleToMatch(scheduleMatch: { id: string; round: number; homeTeam: string; awayTeam: string; date: string; time: string }): Match {
-  return {
-    id: scheduleMatch.id,
-    round: scheduleMatch.round,
-    homeTeam: scheduleMatch.homeTeam,
-    awayTeam: scheduleMatch.awayTeam,
-    homeScore: null,
-    awayScore: null,
-    date: scheduleMatch.date,
-    time: scheduleMatch.time,
-    status: 'SCHEDULED',
-  }
+function scheduleToMatch(m: (typeof schedule)[number]) {
+  return { ...m, homeScore: undefined, awayScore: undefined, status: 'SCHEDULED' as const }
 }
 
-function getTeamMatches(teamName: string): Match[] {
-  return schedule
-    .filter(m => m.homeTeam === teamName || m.awayTeam === teamName)
-    .map(scheduleToMatch)
-}
-
-function findNextMatchForTeam(teamName: string): string | undefined {
-  const now = new Date()
-  const teamScheduleMatches = schedule.filter(m => m.homeTeam === teamName || m.awayTeam === teamName)
-
-  for (const match of teamScheduleMatches) {
-    const matchDate = new Date(`${match.date}T${match.time}:00`)
-    if (matchDate > now) {
-      return match.id
-    }
-  }
-
-  return undefined
-}
+const rounds = Array.from({ length: 30 }, (_, i) => ({
+  number: i + 1,
+  label: `Тур ${i + 1}`,
+}))
 
 export function MatchList({ onPredict }: MatchListProps) {
   const [searchParams, setSearchParams] = useSearchParams()
   const roundParam = searchParams.get('round')
   const teamParam = searchParams.get('team')
   const [nextMatchId, setNextMatchId] = useState<string | undefined>()
-  const [isLoading] = useState(false)
+  const [sheetMatchId, setSheetMatchId] = useState<string | null>(null)
   const initialRoundRef = useRef(1)
   const hasInitializedRef = useRef(false)
+
+  const { user } = useAuth()
+  const {
+    isFavorite,
+    toggleFavorite,
+    favoriteCount,
+    starlets,
+    glowLevel,
+    getMatchFavoritesList,
+  } = useFavorites()
 
   const selectedTeam = teamParam ?? ''
   const selectedRound = roundParam ? Number(roundParam) : initialRoundRef.current
@@ -88,7 +71,7 @@ export function MatchList({ onPredict }: MatchListProps) {
     setSearchParams(next, { replace: true })
   }
 
-  const liveMatches = useLiveMatches(selectedRound, selectedTeam)
+  const { matches: liveMatches } = useLiveMatches(selectedRound, selectedTeam)
 
   useEffect(() => {
     if (hasInitializedRef.current) return
@@ -156,6 +139,10 @@ export function MatchList({ onPredict }: MatchListProps) {
     return Array.from(roundMap.values())
   }, [allMatches])
 
+  const handleFavoriteClick = useCallback((matchId: string) => {
+    setSheetMatchId(matchId)
+  }, [])
+
   return (
     <div className="match-list">
       <div className="match-list__header">
@@ -198,48 +185,71 @@ export function MatchList({ onPredict }: MatchListProps) {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="match-list__loading"><Spinner /></div>
-      ) : (
-        <div className="match-list__grid">
-          {groupedMatches.length === 0 ? (
-            <div className="match-list__empty">
-              {selectedTeam
-                ? `Нет матчей для команды ${selectedTeam}`
-                : 'Нет матчей для отображения'}
-            </div>
-          ) : (
-            groupedMatches.map(group => (
-              <div key={group.label} className="match-list__group">
-                <h3 className="match-list__date-header">{group.label}</h3>
-                {group.days.map(day => (
-                  <div key={day.dateKey} className="match-list__day-group">
-                    <h4 className="match-list__day-header">{day.dateLabel}</h4>
-                    <div className="match-list__group-items">
-                      {day.matches.map(match => (
-                        <MatchCard
-                          key={match.id}
-                          matchId={match.id}
-                          homeTeam={match.homeTeam}
-                          awayTeam={match.awayTeam}
-                          date={match.date}
-                          time={match.time}
-                          homeScore={match.homeScore}
-                          awayScore={match.awayScore}
-                          status={match.status}
-                          isNext={match.id === nextMatchId}
-                          id={match.id === nextMatchId ? `match-${match.id}` : undefined}
-                          onClick={onPredict ? () => onPredict(match.id) : undefined}
-                        />
-                      ))}
-                    </div>
+      <div className="match-list__grid">
+        {groupedMatches.length === 0 ? (
+          <div className="match-list__empty">
+            {selectedTeam
+              ? `Нет матчей для команды ${selectedTeam}`
+              : 'Нет матчей для отображения'}
+          </div>
+        ) : (
+          groupedMatches.map(group => (
+            <div key={group.label} className="match-list__group">
+              <h3 className="match-list__date-header">{group.label}</h3>
+              {group.days.map(day => (
+                <div key={day.dateKey} className="match-list__day-group">
+                  <h4 className="match-list__day-header">{day.dateLabel}</h4>
+                  <div className="match-list__group-items">
+                    {day.matches.map(match => (
+                      <MatchCard
+                        key={match.id}
+                        matchId={match.id}
+                        homeTeam={match.homeTeam}
+                        awayTeam={match.awayTeam}
+                        date={match.date}
+                        time={match.time}
+                        homeScore={match.homeScore}
+                        awayScore={match.awayScore}
+                        status={match.status}
+                        isNext={match.id === nextMatchId}
+                        id={match.id === nextMatchId ? `match-${match.id}` : undefined}
+                        onClick={onPredict ? () => onPredict(match.id) : undefined}
+                        isFavorite={isFavorite(match.id)}
+                        favoriteCount={favoriteCount(match.id)}
+                        starlets={starlets(match.id)}
+                        glowLevel={glowLevel(match.id)}
+                        onFavoriteToggle={user ? () => toggleFavorite(match.id) : undefined}
+                        onFavoriteClick={() => handleFavoriteClick(match.id)}
+                      />
+                    ))}
                   </div>
-                ))}
-              </div>
-            ))
-          )}
-        </div>
-      )}
+                </div>
+              ))}
+            </div>
+          ))
+        )}
+      </div>
+
+      <FavoriteSheet
+        matchId={sheetMatchId ?? ''}
+        isOpen={sheetMatchId !== null}
+        onClose={() => setSheetMatchId(null)}
+        getFavorites={getMatchFavoritesList}
+      />
     </div>
   )
+}
+
+function getTeamMatches(teamName: string) {
+  return getMatchesByTeam(teamName)
+}
+
+function findNextMatchForTeam(teamName: string): string | undefined {
+  const now = new Date()
+  const teamSchedule = getMatchesByTeam(teamName)
+  for (const match of teamSchedule) {
+    const matchDate = new Date(`${match.date}T${match.time}:00`)
+    if (matchDate > now) return match.id
+  }
+  return undefined
 }

@@ -32,37 +32,48 @@ function writeCache(round: number, data: Match[]) {
 export function useLiveMatches(
   selectedRound: number,
   selectedTeam: string
-): Match[] {
-  const [liveMatches, setLiveMatches] = useState<Match[]>(() => {
-    if (!selectedTeam) {
-      return readCache(selectedRound) ?? []
-    }
-    return []
-  })
+): { matches: Match[]; loaded: boolean } {
+  const cached = !selectedTeam ? readCache(selectedRound) : null
+
+  const [liveMatches, setLiveMatches] = useState<Match[]>(cached ?? [])
+  const [loaded, setLoaded] = useState(!!cached)
 
   useEffect(() => {
     let cancelled = false
 
     if (selectedTeam) {
+      setLoaded(false)
       const teamRounds = [...new Set(
         schedule
           .filter(m => m.homeTeam === selectedTeam || m.awayTeam === selectedTeam)
           .map(m => m.round)
       )]
       Promise.all(teamRounds.map(r => getMatchesByRound(r)))
-        .then(results => { if (!cancelled) setLiveMatches(results.flat()) })
-        .catch(() => { if (!cancelled) setLiveMatches([]) })
+        .then(results => { if (!cancelled) {
+          setLiveMatches(results.flat())
+          setLoaded(true)
+        }})
+        .catch(() => { if (!cancelled) {
+          setLiveMatches([])
+          setLoaded(true)
+        }})
     } else {
+      setLiveMatches(cached ?? [])
+      setLoaded(!!cached)
       getMatchesByRound(selectedRound)
         .then(data => { if (!cancelled) {
           writeCache(selectedRound, data)
           setLiveMatches(data)
+          if (!cached) setLoaded(true)
         }})
-        .catch(() => { if (!cancelled) setLiveMatches([]) })
+        .catch(() => { if (!cancelled) {
+          setLiveMatches([])
+          setLoaded(true)
+        }})
     }
 
     return () => { cancelled = true }
   }, [selectedRound, selectedTeam])
 
-  return liveMatches
+  return { matches: liveMatches, loaded }
 }

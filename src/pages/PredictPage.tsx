@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { PredictionForm, type PredictionFormData } from '../components/PredictionForm'
-import { Spinner } from '../components/Spinner'
+
 import { savePrediction, getPredictionForMatch, getMatchInfo, getMatchOtherPredictions, type OtherPrediction } from '../api/predictions'
 import { schedule, isMatchOpen } from '../lib/schedule'
 import { useAuth } from '../hooks/useAuth'
@@ -124,7 +124,64 @@ export function PredictPage() {
   }
 
   if (isLoadingPrediction) {
-    return <div className="page"><Spinner /></div>
+    return (
+      <div className="page">
+        <div className="check check--skeleton">
+          <div className="check__header">
+            <div className="skeleton" />
+          </div>
+          <div className="check__match">
+            <div className="check__teams">
+              <div className="check__team">
+                <div className="skeleton check__skeleton-logo" />
+                <div className="skeleton check__skeleton-team-name" />
+              </div>
+              <span className="check__vs">vs</span>
+              <div className="check__team check__team--right">
+                <div className="skeleton check__skeleton-team-name" />
+                <div className="skeleton check__skeleton-logo" />
+              </div>
+            </div>
+          </div>
+          <div className="check__sections">
+            <div className="check__section">
+              <div className="check__section-label"><div className="skeleton" /></div>
+              <div className="check__skeleton-outcome">
+                <div className="skeleton" />
+                <div className="skeleton" />
+                <div className="skeleton" />
+              </div>
+            </div>
+            <div className="check__section">
+              <div className="check__section-label"><div className="skeleton" /></div>
+              <div className="check__skeleton-score">
+                <div className="skeleton" />
+                <span className="check__skeleton-score-sep">:</span>
+                <div className="skeleton" />
+              </div>
+            </div>
+            <div className="check__section">
+              <div className="check__section-label"><div className="skeleton" /></div>
+              <div className="check__skeleton-goals-row">
+                <div className="skeleton" />
+                <div className="skeleton" />
+                <div className="skeleton" />
+                <div className="skeleton" />
+              </div>
+              <div className="check__skeleton-goals-row">
+                <div className="skeleton" />
+                <div className="skeleton" />
+                <div className="skeleton" />
+                <div className="skeleton" />
+              </div>
+            </div>
+          </div>
+          <div className="check__footer">
+            <div className="skeleton check__skeleton-submit" />
+          </div>
+        </div>
+      </div>
+    )
   }
 
   const matchClosed = !isMatchOpen(match)

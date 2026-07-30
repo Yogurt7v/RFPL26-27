@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getStandings, type Standing } from '../api/standings'
 import { getTeamByName } from '../lib/teams'
-import { Spinner } from './Spinner'
 
 export function StandingsTable() {
   const [standings, setStandings] = useState<Standing[]>([])
@@ -28,7 +27,57 @@ export function StandingsTable() {
   }, [])
 
   if (isLoading) {
-    return <div className="standings-table"><Spinner /></div>
+    return (
+      <div className="standings-table">
+        <div className="standings-table__header">
+          <span className="standings-table__title">Турнирная таблица</span>
+        </div>
+        <div className="content-enter" style={{ overflowX: 'auto' }}>
+          <table className="standings-table__table">
+            <thead>
+              <tr>
+                <th className="standings-table__th standings-table__th--pos"><div className="skeleton" style={{ width: 16, height: 12 }} /></th>
+                <th className="standings-table__th standings-table__th--team"><div className="skeleton" style={{ width: 56, height: 12 }} /></th>
+                <th className="standings-table__th standings-table__th--pts"><div className="skeleton" style={{ width: 32, height: 12 }} /></th>
+                <th className="standings-table__th"><div className="skeleton" style={{ width: 16, height: 12 }} /></th>
+                <th className="standings-table__th"><div className="skeleton" style={{ width: 16, height: 12 }} /></th>
+                <th className="standings-table__th"><div className="skeleton" style={{ width: 16, height: 12 }} /></th>
+                <th className="standings-table__th"><div className="skeleton" style={{ width: 16, height: 12 }} /></th>
+                <th className="standings-table__th"><div className="skeleton" style={{ width: 16, height: 12 }} /></th>
+                <th className="standings-table__th"><div className="skeleton" style={{ width: 16, height: 12 }} /></th>
+                <th className="standings-table__th"><div className="skeleton" style={{ width: 28, height: 12 }} /></th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: 16 }).map((_, i) => (
+                <tr key={i} className="standings-table__row">
+                  <td className="standings-table__td standings-table__td--pos">
+                    <div className="skeleton" style={{ width: 20, height: 14 }} />
+                  </td>
+                  <td className="standings-table__td standings-table__td--team">
+                    <span className="standings-table__team-name">
+                      <div className="skeleton" style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0 }} />
+                      <div className="skeleton" style={{ width: `${60 + (i % 5) * 15}%`, height: 14 }} />
+                    </span>
+                  </td>
+                  <td className="standings-table__td standings-table__td--pts">
+                    <div className="skeleton" style={{ width: 28, height: 14 }} />
+                  </td>
+                  <td className="standings-table__td"><div className="skeleton" style={{ width: 20, height: 14 }} /></td>
+                  <td className="standings-table__td"><div className="skeleton" style={{ width: 20, height: 14 }} /></td>
+                  <td className="standings-table__td"><div className="skeleton" style={{ width: 20, height: 14 }} /></td>
+                  <td className="standings-table__td"><div className="skeleton" style={{ width: 20, height: 14 }} /></td>
+                  <td className="standings-table__td"><div className="skeleton" style={{ width: 20, height: 14 }} /></td>
+                  <td className="standings-table__td"><div className="skeleton" style={{ width: 20, height: 14 }} /></td>
+                  <td className="standings-table__td"><div className="skeleton" style={{ width: 30, height: 14 }} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="standings-table__zigzag" />
+      </div>
+    )
   }
 
   if (error) {
@@ -41,7 +90,7 @@ export function StandingsTable() {
         <span className="standings-table__title">Турнирная таблица</span>
       </div>
 
-      <div style={{ overflowX: 'auto' }}>
+      <div className="content-enter" style={{ overflowX: 'auto' }}>
         <table className="standings-table__table">
           <thead>
             <tr>
