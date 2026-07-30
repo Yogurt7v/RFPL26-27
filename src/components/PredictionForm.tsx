@@ -129,12 +129,12 @@ export function PredictionForm({
           </div>
         </div>
 
-        {isFinished && points != null && points > 0 && (
+        {isFinished && points != null && points !== 0 && (
           <>
             <div className="check__divider" />
-            <div className="check__winnings">
-              <div className="check__winnings-label">Выигрыш</div>
-              <div className="check__winnings-value">+{points} очков</div>
+            <div className={`check__winnings${points < 0 ? ' check__winnings--penalty' : ''}`}>
+              <div className="check__winnings-label">{points > 0 ? 'Выигрыш' : 'Штраф'}</div>
+              <div className={`check__winnings-value${points < 0 ? ' check__winnings-value--negative' : ''}`}>{points > 0 ? '+' : ''}{points} очков</div>
             </div>
           </>
         )}

@@ -143,6 +143,9 @@ BEGIN
     END IF;
   END IF;
 
+  IF points = 0 THEN
+    RETURN -1;
+  END IF;
   RETURN points;
 END;
 $$ LANGUAGE plpgsql;

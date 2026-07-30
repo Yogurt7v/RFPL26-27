@@ -60,9 +60,14 @@ export function MatchList({ onPredict }: MatchListProps) {
       next.set('round', String(params.round))
     }
     if (params.team !== undefined) {
-      if (params.team) next.set('team', params.team)
-      else {
+      if (params.team) {
+        next.set('team', params.team)
+        const nextForTeam = findNextMatchForTeam(params.team)
+        setNextMatchId(nextForTeam)
+      } else {
         next.delete('team')
+        const generalNext = getNextMatch()
+        setNextMatchId(generalNext?.id)
         if (!next.has('round') && initialRoundRef.current) {
           next.set('round', String(initialRoundRef.current))
         }
@@ -100,7 +105,7 @@ export function MatchList({ onPredict }: MatchListProps) {
 
   const allMatches = useMemo(() => {
     const base = selectedTeam
-      ? getTeamMatches(selectedTeam)
+      ? getTeamMatches(selectedTeam).map(scheduleToMatch)
       : schedule.filter(m => m.round === selectedRound).map(scheduleToMatch)
 
     if (liveMatches.length === 0) return base
@@ -151,7 +156,11 @@ export function MatchList({ onPredict }: MatchListProps) {
           {(selectedTeam || selectedRound !== initialRoundRef.current) && (
             <button
               className="match-list__reset"
-              onClick={() => setSearchParams({}, { replace: true })}
+              onClick={() => {
+                const generalNext = getNextMatch()
+                setNextMatchId(generalNext?.id)
+                setSearchParams({}, { replace: true })
+              }}
               title="Сбросить фильтры"
             >
               ×

@@ -1047,6 +1047,11 @@
   border-radius: var(--radius-md);
 }
 
+.check__winnings--penalty {
+  background: linear-gradient(135deg, #fce4e4 0%, #f5c6c6 100%);
+  border-color: var(--color-error);
+}
+
 .check__winnings-label {
   font-size: var(--font-size-xs);
   color: var(--color-success);
@@ -1072,6 +1077,10 @@
   color: var(--color-success);
   font-variant-numeric: tabular-nums;
   margin-top: var(--spacing-xs);
+}
+
+.check__winnings-value--negative {
+  color: var(--color-error);
 }
 
 .check__others {

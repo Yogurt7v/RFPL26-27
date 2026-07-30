@@ -68,6 +68,7 @@ export function calculatePoints(
     points += prediction.awayGoalsThreshold
   }
 
+  if (points === 0) return -1
   return points
 }
 

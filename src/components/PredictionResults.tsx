@@ -92,7 +92,7 @@ export function PredictionResults({ userId }: PredictionResultsProps) {
     return <div className="prediction-results prediction-results--empty">{error}</div>
   }
 
-  const totalPoints = predictions.reduce((sum, p) => sum + p.pointsEarned, 0)
+  const totalPoints = predictions.reduce((sum, p) => sum + p.pointsEarned, 0) + 30
 
   return (
     <div className="prediction-results">
