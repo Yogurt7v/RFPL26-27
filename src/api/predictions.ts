@@ -24,6 +24,8 @@ export interface PredictionData {
   outcome: string | null
   homeGoalsThreshold: number | null
   awayGoalsThreshold: number | null
+  actualHomeScore: number | null
+  actualAwayScore: number | null
 }
 
 export async function getPredictionForMatch(
@@ -41,7 +43,7 @@ export async function getPredictionForMatch(
         outcome,
         home_goals_threshold,
         away_goals_threshold,
-        matches!inner (id)
+        matches!inner (id, home_score, away_score)
       `)
       .eq('user_id', userId)
       .eq('matches.home_team', homeTeam)
@@ -52,13 +54,23 @@ export async function getPredictionForMatch(
 
   if (!data) return null
 
+  const match = data.matches as Record<string, unknown> | null
+
   return {
     predictedHomeScore: data.predicted_home_score as number | null,
     predictedAwayScore: data.predicted_away_score as number | null,
     outcome: data.outcome as string | null,
     homeGoalsThreshold: data.home_goals_threshold as number | null,
     awayGoalsThreshold: data.away_goals_threshold as number | null,
+    actualHomeScore: (match?.home_score as number) ?? null,
+    actualAwayScore: (match?.away_score as number) ?? null,
   }
+}
+
+export interface MatchInfo {
+  id: number
+  homeScore: number | null
+  awayScore: number | null
 }
 
 export async function findMatchId(homeTeam: string, awayTeam: string, round: number): Promise<number | null> {
@@ -73,6 +85,26 @@ export async function findMatchId(homeTeam: string, awayTeam: string, round: num
   )
 
   return data?.id ?? null
+}
+
+export async function getMatchInfo(homeTeam: string, awayTeam: string, round: number): Promise<MatchInfo | null> {
+  const { data } = await withRetry(() =>
+    supabase
+      .from('matches')
+      .select('id, home_score, away_score')
+      .eq('home_team', homeTeam)
+      .eq('away_team', awayTeam)
+      .eq('round', round)
+      .single()
+  )
+
+  if (!data) return null
+
+  return {
+    id: data.id as number,
+    homeScore: (data.home_score as number) ?? null,
+    awayScore: (data.away_score as number) ?? null,
+  }
 }
 
 export async function savePrediction(

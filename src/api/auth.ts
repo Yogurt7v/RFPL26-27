@@ -61,3 +61,58 @@ export async function verifyUser(
     error: null,
   }
 }
+
+export async function getSecurityQuestion(
+  login: string
+): Promise<string | null> {
+  const { data, error } = await supabase.rpc('get_security_question', {
+    login,
+  })
+
+  if (error || !data || data.length === 0) return null
+  return data[0].question || null
+}
+
+export async function resetPasswordWithSecurity(
+  login: string,
+  answer: string,
+  newPassword: string
+): Promise<{ success: boolean; error: string | null }> {
+  const { data, error } = await supabase.rpc('reset_password_with_security', {
+    login,
+    answer: answer.toLowerCase(),
+    new_password: newPassword,
+  })
+
+  if (error) return { success: false, error: error.message }
+  if (!data) return { success: false, error: 'Неверный ответ на контрольный вопрос' }
+
+  return { success: true, error: null }
+}
+
+export async function setSecurityQuestion(
+  userId: string,
+  question: string,
+  answer: string
+): Promise<boolean> {
+  const { error } = await supabase.rpc('set_security_question', {
+    user_id: userId,
+    question,
+    answer: answer.toLowerCase(),
+  })
+
+  return !error
+}
+
+export const SECURITY_QUESTIONS = [
+  'Девичья фамилия матери',
+  'Кличка домашнего питомца',
+  'Любимый фильм',
+  'Любимая книга',
+  'Название родного города',
+  'Название первой школы',
+  'Любимое блюдо',
+  'Марка первого автомобиля',
+  'Имя любимого учителя',
+  'Любимый вид спорта',
+]

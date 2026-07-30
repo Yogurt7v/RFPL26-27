@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { MatchCard } from './MatchCard'
 import { Spinner } from './Spinner'
 import { schedule, getNextMatch, getRoundByMatchId } from '../lib/schedule'
@@ -59,26 +60,51 @@ function findNextMatchForTeam(teamName: string): string | undefined {
 }
 
 export function MatchList({ onPredict }: MatchListProps) {
-  const [selectedRound, setSelectedRound] = useState(1)
-  const [selectedTeam, setSelectedTeam] = useState('')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const roundParam = searchParams.get('round')
+  const teamParam = searchParams.get('team')
   const [nextMatchId, setNextMatchId] = useState<string | undefined>()
   const [isLoading] = useState(false)
   const initialRoundRef = useRef(1)
-  const liveMatches = useLiveMatches(selectedRound, selectedTeam)
+  const hasInitializedRef = useRef(false)
 
-  useEffect(() => {
-    if (!selectedTeam) {
-      const next = getNextMatch()
-      if (next) {
-        setNextMatchId(next.id)
-        const round = getRoundByMatchId(next.id)
-        if (round) {
-          setSelectedRound(round)
-          initialRoundRef.current = round
+  const selectedTeam = teamParam ?? ''
+  const selectedRound = roundParam ? Number(roundParam) : initialRoundRef.current
+
+  const setFilter = (params: { round?: number; team?: string }) => {
+    const next = new URLSearchParams(searchParams)
+    if (params.round !== undefined) {
+      next.set('round', String(params.round))
+    }
+    if (params.team !== undefined) {
+      if (params.team) next.set('team', params.team)
+      else {
+        next.delete('team')
+        if (!next.has('round') && initialRoundRef.current) {
+          next.set('round', String(initialRoundRef.current))
         }
       }
     }
-  }, [selectedTeam])
+    setSearchParams(next, { replace: true })
+  }
+
+  const liveMatches = useLiveMatches(selectedRound, selectedTeam)
+
+  useEffect(() => {
+    if (hasInitializedRef.current) return
+    hasInitializedRef.current = true
+
+    const next = getNextMatch()
+    if (next) {
+      setNextMatchId(next.id)
+      const round = getRoundByMatchId(next.id)
+      if (round) initialRoundRef.current = round
+    }
+
+    if (!roundParam && !teamParam && initialRoundRef.current) {
+      setSearchParams({ round: String(initialRoundRef.current) }, { replace: true })
+    }
+  }, [])
 
   useEffect(() => {
     if (selectedTeam) {
@@ -138,7 +164,7 @@ export function MatchList({ onPredict }: MatchListProps) {
           {(selectedTeam || selectedRound !== initialRoundRef.current) && (
             <button
               className="match-list__reset"
-              onClick={() => { setSelectedRound(initialRoundRef.current); setSelectedTeam('') }}
+              onClick={() => setSearchParams({}, { replace: true })}
               title="Сбросить фильтры"
             >
               ×
@@ -147,7 +173,7 @@ export function MatchList({ onPredict }: MatchListProps) {
           {!selectedTeam && (
             <select
               value={selectedRound}
-              onChange={e => setSelectedRound(Number(e.target.value))}
+              onChange={e => setFilter({ round: Number(e.target.value) })}
               className="match-list__select"
             >
               {rounds.map(r => (
@@ -159,7 +185,7 @@ export function MatchList({ onPredict }: MatchListProps) {
           )}
           <select
             value={selectedTeam}
-            onChange={e => setSelectedTeam(e.target.value)}
+            onChange={e => setFilter({ team: e.target.value })}
             className="match-list__select"
           >
             <option value="">Все команды</option>

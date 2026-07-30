@@ -10,6 +10,7 @@ import { UpdateBanner } from './components/UpdateBanner'
 import './App.css'
 
 const LoginPage = lazy(() => import('./pages/LoginPage'))
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'))
 const MatchesPage = lazy(() => import('./pages/MatchesPage'))
 const StandingsPage = lazy(() => import('./pages/StandingsPage'))
 const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'))
@@ -34,6 +35,11 @@ function App() {
                 <Route path="/login" element={
                   <ErrorBoundary>
                     <LoginPage />
+                  </ErrorBoundary>
+                } />
+                <Route path="/reset-password" element={
+                  <ErrorBoundary>
+                    <ResetPasswordPage />
                   </ErrorBoundary>
                 } />
                 <Route path="/test-scoring" element={

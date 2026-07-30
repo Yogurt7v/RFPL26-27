@@ -1,6 +1,7 @@
 import { useState, useActionState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { setSecurityQuestion, SECURITY_QUESTIONS } from '../api/auth'
 
 type Tab = 'login' | 'register'
 type MessageType = 'error' | 'success' | null
@@ -17,6 +18,9 @@ export function LoginPage() {
   const [activeTab, setActiveTab] = useState<Tab>('login')
   const [loginMessage, setLoginMessage] = useState<Message | null>(null)
   const [registerMessage, setRegisterMessage] = useState<Message | null>(null)
+
+  const questionRef = useRef<HTMLSelectElement>(null)
+  const answerRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setLoginMessage(null)
@@ -81,6 +85,52 @@ export function LoginPage() {
     null
   )
 
+  const handleRegisterSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const form = e.currentTarget
+    const formData = new FormData(form)
+    const username = formData.get('username') as string
+    const password = formData.get('password') as string
+    const question = formData.get('question') as string
+    const answer = formData.get('answer') as string
+
+    if (!username || username.length < 3) {
+      setRegisterMessage({ text: 'Логин должен быть не менее 3 символов', type: 'error' })
+      return
+    }
+    if (!password || password.length < 6) {
+      setRegisterMessage({ text: 'Пароль должен быть не менее 6 символов', type: 'error' })
+      return
+    }
+    if (!question) {
+      setRegisterMessage({ text: 'Выберите контрольный вопрос', type: 'error' })
+      return
+    }
+    if (!answer || answer.length < 2) {
+      setRegisterMessage({ text: 'Введите ответ на контрольный вопрос', type: 'error' })
+      return
+    }
+
+    const error = await register(username, password)
+    if (error) {
+      if (error.includes('duplicate') || error.includes('unique')) {
+        setRegisterMessage({ text: 'Логин уже занят', type: 'error' })
+      } else {
+        setRegisterMessage({ text: 'Ошибка регистрации. Попробуйте другой логин', type: 'error' })
+      }
+      return
+    }
+
+    const userStr = localStorage.getItem('rfpl_user')
+    if (userStr) {
+      const user = JSON.parse(userStr)
+      await setSecurityQuestion(user.id, question, answer)
+    }
+
+    setRegisterMessage({ text: 'Пользователь создан успешно!', type: 'success' })
+    setTimeout(() => navigate('/'), 1000)
+  }
+
   const loginBtnRef = useRef<HTMLButtonElement>(null)
   const registerBtnRef = useRef<HTMLButtonElement>(null)
 
@@ -137,6 +187,9 @@ export function LoginPage() {
               <button type="submit" className="btn btn--primary btn--full" disabled={loginPending}>
                 {loginPending ? 'Вход...' : 'Войти'}
               </button>
+              <Link to="/reset-password" className="login-forgot">
+                Забыли пароль?
+              </Link>
               {loginMessage && (
                 <div className={`login-message login-message--${loginMessage.type}`}>
                   {loginMessage.text}
@@ -144,7 +197,7 @@ export function LoginPage() {
               )}
             </form>
           ) : (
-            <form action={registerFormAction} key="register">
+            <form onSubmit={handleRegisterSubmit} key="register">
               <input
                 className="input"
                 name="username"
@@ -159,6 +212,26 @@ export function LoginPage() {
                 type="password"
                 placeholder="Пароль (мин. 6 символов)"
                 minLength={6}
+                required
+              />
+              <select
+                ref={questionRef}
+                className="input"
+                name="question"
+                defaultValue=""
+              >
+                <option value="" disabled>Контрольный вопрос</option>
+                {SECURITY_QUESTIONS.map(q => (
+                  <option key={q} value={q}>{q}</option>
+                ))}
+              </select>
+              <input
+                ref={answerRef}
+                className="input"
+                name="answer"
+                type="text"
+                placeholder="Ответ на контрольный вопрос"
+                minLength={2}
                 required
               />
               <button type="submit" className="btn btn--primary btn--full" disabled={registerPending}>

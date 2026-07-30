@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { PredictionForm, type PredictionFormData } from '../components/PredictionForm'
 import { Spinner } from '../components/Spinner'
-import { savePrediction, getPredictionForMatch, findMatchId, getMatchOtherPredictions, type OtherPrediction } from '../api/predictions'
+import { savePrediction, getPredictionForMatch, getMatchInfo, getMatchOtherPredictions, type OtherPrediction } from '../api/predictions'
 import { schedule, isMatchOpen } from '../lib/schedule'
 import { useAuth } from '../hooks/useAuth'
 
@@ -16,9 +16,15 @@ export function PredictPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
 
+  const goBack = () => {
+    if (window.history.length > 1) navigate(-1)
+    else navigate('/')
+  }
+
   const match = schedule.find(m => m.id === matchId)
   const [initialValues, setInitialValues] = useState<PredictionFormData | null>(null)
   const [isLoadingPrediction, setIsLoadingPrediction] = useState(true)
+  const [matchScores, setMatchScores] = useState<{ home: number | null; away: number | null } | null>(null)
 
   const [otherPredictions, setOtherPredictions] = useState<OtherPrediction[]>([])
   const [otherCount, setOtherCount] = useState(0)
@@ -43,6 +49,9 @@ export function PredictPage() {
             homeGoalsThreshold: existing.homeGoalsThreshold,
             awayGoalsThreshold: existing.awayGoalsThreshold,
           })
+          if (existing.actualHomeScore != null || existing.actualAwayScore != null) {
+            setMatchScores({ home: existing.actualHomeScore, away: existing.actualAwayScore })
+          }
         }
       } catch (err) {
         console.error('Error loading prediction:', err)
@@ -61,10 +70,14 @@ export function PredictPage() {
     let cancelled = false
 
     async function loadOthers() {
-      const intMatchId = await findMatchId(match!.homeTeam, match!.awayTeam, match!.round)
-      if (!intMatchId || cancelled) return
+      const matchInfo = await getMatchInfo(match!.homeTeam, match!.awayTeam, match!.round)
+      if (!matchInfo || cancelled) return
 
-      const info = await getMatchOtherPredictions(intMatchId, user!.id)
+      if (!cancelled && matchInfo.homeScore != null && matchInfo.awayScore != null) {
+        setMatchScores({ home: matchInfo.homeScore, away: matchInfo.awayScore })
+      }
+
+      const info = await getMatchOtherPredictions(matchInfo.id, user!.id)
       if (!cancelled) {
         setOtherPredictions(info.predictions)
         setOtherCount(info.count)
@@ -80,7 +93,7 @@ export function PredictPage() {
     return (
       <div className="page">
         <p>Матч не найден</p>
-        <button onClick={() => navigate('/')}>Назад к матчам</button>
+        <button onClick={goBack}>Назад к матчам</button>
       </div>
     )
   }
@@ -128,8 +141,10 @@ export function PredictPage() {
               awayTeam={match.awayTeam}
               initialValues={initialValues}
               onSubmit={handleSubmit}
-              onSaved={() => navigate('/')}
+              onSaved={goBack}
               isFinished={finished}
+              actualHomeScore={matchScores?.home ?? null}
+              actualAwayScore={matchScores?.away ?? null}
             />
           </>
         ) : (
@@ -140,6 +155,9 @@ export function PredictPage() {
             <div className="check__match">
               <div className="check__teams">
                 <span>{match.homeTeam}</span>
+                {matchScores?.home != null && matchScores?.away != null && (
+                  <span className="check__score">{matchScores.home}:{matchScores.away}</span>
+                )}
                 <span className="check__vs">vs</span>
                 <span>{match.awayTeam}</span>
               </div>
@@ -151,58 +169,58 @@ export function PredictPage() {
           </div>
         )}
 
-        {otherCount > 0 && !finished && (
-          <div className="check" style={{ marginTop: '12px' }}>
-            <div className="check__header">
-              <span className="check__title">Другие игроки</span>
-            </div>
-            <p style={{ padding: '12px 16px', color: 'var(--color-secondary)', fontSize: 'var(--font-size-sm)', textAlign: 'center' }}>
-              {otherNames.join(', ')} {otherCount === 1 ? 'сделал' : otherCount < 5 ? 'сделали' : 'сделали'} прогноз
-            </p>
-          </div>
-        )}
+         {otherCount > 0 && !finished && (
+           <div className="check" style={{ marginTop: '12px' }}>
+             <div className="check__header">
+               <span className="check__title">Другие игроки</span>
+             </div>
+             <p style={{ padding: '12px 16px', color: 'var(--color-secondary)', fontSize: 'var(--font-size-sm)', textAlign: 'center' }}>
+               {otherNames.join(', ')} {otherCount === 1 ? 'сделал' : otherCount < 5 ? 'сделали' : 'сделали'} прогноз
+             </p>
+           </div>
+         )}
 
-        {otherCount > 0 && finished && (
-          <div className="check" style={{ marginTop: '12px' }}>
-            <div className="check__header">
-              <span className="check__title">Прогнозы других игроков</span>
-            </div>
-            <div className="check__others">
-              <div className="check__others-header">
-                <span className="check__others-cell">Игрок</span>
-                <span className="check__others-cell">Исход</span>
-                <span className="check__others-cell">Счёт</span>
-                <span className="check__others-cell">Порог</span>
-                <span className="check__others-cell">Очки</span>
-              </div>
-              {otherPredictions.map((p, i) => (
-                <div key={i} className="check__others-row">
-                  <span className="check__others-cell">{p.username}</span>
-                  <span className="check__others-cell">
-                    {p.outcome ? (p.outcome === '1' ? 'П1' : p.outcome === 'X' ? 'Ничья' : 'П2') : '—'}
-                  </span>
-                  <span className="check__others-cell">
-                    {p.predictedHomeScore != null && p.predictedAwayScore != null
-                      ? `${p.predictedHomeScore}:${p.predictedAwayScore}`
-                      : '—'}
-                  </span>
-                  <span className="check__others-cell">
-                    {formatGoalsThreshold(p, match.homeTeam, match.awayTeam)}
-                  </span>
-                  <span className="check__others-cell">{p.pointsEarned}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+         {otherCount > 0 && finished && (
+           <div className="check" style={{ marginTop: '12px' }}>
+             <div className="check__header">
+               <span className="check__title">Прогнозы других игроков</span>
+             </div>
+             <div className="check__others">
+               <div className="check__others-header">
+                 <span className="check__others-cell">Игрок</span>
+                 <span className="check__others-cell">Исход</span>
+                 <span className="check__others-cell">Счёт</span>
+                 <span className="check__others-cell">Порог</span>
+                 <span className="check__others-cell">Очки</span>
+               </div>
+               {otherPredictions.map((p, i) => (
+                 <div key={i} className="check__others-row">
+                   <span className="check__others-cell">{p.username}</span>
+                   <span className="check__others-cell">
+                     {p.outcome ? (p.outcome === '1' ? 'П1' : p.outcome === 'X' ? 'Ничья' : 'П2') : '—'}
+                   </span>
+                   <span className="check__others-cell">
+                     {p.predictedHomeScore != null && p.predictedAwayScore != null
+                       ? `${p.predictedHomeScore}:${p.predictedAwayScore}`
+                       : '—'}
+                   </span>
+                   <span className="check__others-cell">
+                     {formatGoalsThreshold(p, match.homeTeam, match.awayTeam)}
+                   </span>
+                   <span className="check__others-cell">{p.pointsEarned}</span>
+                 </div>
+               ))}
+             </div>
+           </div>
+         )}
 
-        <button
-          className="btn btn--secondary"
-          onClick={() => navigate('/')}
-          style={{ marginTop: '12px', width: '100%' }}
-        >
-          Назад к матчам
-        </button>
+         <button
+           className="btn btn--secondary"
+           onClick={goBack}
+           style={{ marginTop: '12px', width: '100%' }}
+         >
+           Назад к матчам
+         </button>
       </div>
     )
   }
@@ -214,8 +232,10 @@ export function PredictPage() {
         awayTeam={match.awayTeam}
         initialValues={initialValues}
         onSubmit={handleSubmit}
-        onSaved={() => navigate('/')}
+        onSaved={goBack}
         canEdit
+        actualHomeScore={matchScores?.home ?? null}
+        actualAwayScore={matchScores?.away ?? null}
       />
       {otherCount > 0 && (
         <div className="check" style={{ marginTop: '12px' }}>
@@ -229,7 +249,7 @@ export function PredictPage() {
       )}
       <button
         className="btn btn--secondary"
-        onClick={() => navigate('/')}
+        onClick={goBack}
         style={{ marginTop: '16px', width: '100%' }}
       >
         Назад к матчам
