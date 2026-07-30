@@ -1,30 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { getStandings, type Standing } from '../api/standings'
 import { getTeamByName } from '../lib/teams'
 
 export function StandingsTable() {
-  const [standings, setStandings] = useState<Standing[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const data = await getStandings()
-        if (data.length === 0) {
-          setError('Не удалось загрузить турнирную таблицу')
-        } else {
-          setStandings(data)
-        }
-      } catch (err) {
-        console.error('Error loading standings:', err)
-        setError('Ошибка загрузки данных')
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    load()
-  }, [])
+  const { data: standings = [], isLoading, error } = useQuery({
+    queryKey: ['standings'],
+    queryFn: getStandings,
+    staleTime: 5 * 60_000,
+  })
 
   if (isLoading) {
     return (
@@ -80,8 +63,10 @@ export function StandingsTable() {
     )
   }
 
-  if (error) {
-    return <div className="standings-table" style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>{error}</div>
+  if (error || standings.length === 0) {
+    return <div className="standings-table" style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+      {error ? 'Ошибка загрузки данных' : 'Не удалось загрузить турнирную таблицу'}
+    </div>
   }
 
   return (

@@ -1,25 +1,19 @@
-import { useEffect, useState } from 'react'
-import type { FavoriteUser } from '../api/favorites'
+import { useQuery } from '@tanstack/react-query'
+import { getMatchFavorites } from '../api/favorites'
 
 interface FavoriteSheetProps {
   matchId: string
   isOpen: boolean
   onClose: () => void
-  getFavorites: (matchId: string) => Promise<FavoriteUser[]>
 }
 
-export function FavoriteSheet({ matchId, isOpen, onClose, getFavorites }: FavoriteSheetProps) {
-  const [users, setUsers] = useState<FavoriteUser[]>([])
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    if (!isOpen) return
-    setLoading(true)
-    getFavorites(matchId).then(list => {
-      setUsers(list)
-      setLoading(false)
-    })
-  }, [matchId, isOpen, getFavorites])
+export function FavoriteSheet({ matchId, isOpen, onClose }: FavoriteSheetProps) {
+  const { data: users = [], isLoading } = useQuery({
+    queryKey: ['favorites', 'match', matchId],
+    queryFn: () => getMatchFavorites(matchId),
+    enabled: isOpen && !!matchId,
+    staleTime: 30_000,
+  })
 
   if (!isOpen) return null
 
@@ -34,7 +28,7 @@ export function FavoriteSheet({ matchId, isOpen, onClose, getFavorites }: Favori
           </button>
         </div>
         <div className="favorite-sheet__body">
-          {loading ? (
+          {isLoading ? (
             <p className="favorite-sheet__loading">Загрузка...</p>
           ) : users.length === 0 ? (
             <p className="favorite-sheet__empty">Пока никто не отметил этот матч</p>

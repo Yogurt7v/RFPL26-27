@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { getLeaderboard, type LeaderboardEntry } from '../api/leaderboard'
 
 interface LeaderboardTableProps {
@@ -8,28 +8,11 @@ interface LeaderboardTableProps {
 const MEDALS = ['🥇', '🥈', '🥉']
 
 export function LeaderboardTable({ currentUserId }: LeaderboardTableProps) {
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const data = await getLeaderboard()
-        if (data.length === 0) {
-          setError('Пока нет данных для таблицы лидеров')
-        } else {
-          setEntries(data)
-        }
-      } catch (err) {
-        console.error('Error loading leaderboard:', err)
-        setError('Ошибка загрузки данных')
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    load()
-  }, [])
+  const { data: entries = [], isLoading, error } = useQuery({
+    queryKey: ['leaderboard'],
+    queryFn: getLeaderboard,
+    staleTime: 5 * 60_000,
+  })
 
   if (isLoading) {
     return (
@@ -71,8 +54,12 @@ export function LeaderboardTable({ currentUserId }: LeaderboardTableProps) {
     )
   }
 
-  if (error) {
-    return <div className="leaderboard-table" style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>{error}</div>
+  if (error || entries.length === 0) {
+    return (
+      <div className="leaderboard-table" style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+        {error ? 'Ошибка загрузки данных' : 'Пока нет данных для таблицы лидеров'}
+      </div>
+    )
   }
 
   return (

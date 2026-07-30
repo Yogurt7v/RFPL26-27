@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { PredictionForm, type PredictionFormData } from '../components/PredictionForm'
-
 import { savePrediction, getPredictionForMatch, getMatchInfo, getMatchOtherPredictions, type OtherPrediction } from '../api/predictions'
 import { schedule, isMatchOpen } from '../lib/schedule'
 import { useAuth } from '../hooks/useAuth'
@@ -22,72 +21,50 @@ export function PredictPage() {
   }
 
   const match = schedule.find(m => m.id === matchId)
-  const [initialValues, setInitialValues] = useState<PredictionFormData | null>(null)
-  const [isLoadingPrediction, setIsLoadingPrediction] = useState(true)
-  const [matchScores, setMatchScores] = useState<{ home: number | null; away: number | null } | null>(null)
 
-  const [otherPredictions, setOtherPredictions] = useState<OtherPrediction[]>([])
-  const [otherCount, setOtherCount] = useState(0)
-  const [otherNames, setOtherNames] = useState<string[]>([])
+  const { data: existingPrediction, isLoading: isLoadingPrediction } = useQuery({
+    queryKey: ['predictions', 'detail', user?.id, match?.homeTeam, match?.awayTeam, match?.round],
+    queryFn: () => getPredictionForMatch(user!.id, match!.homeTeam, match!.awayTeam, match!.round),
+    enabled: !!user && !!match,
+    staleTime: 30_000,
+  })
 
-  useEffect(() => {
-    if (!user || !match) {
-      setIsLoadingPrediction(false)
-      return
-    }
+  const { data: matchScores } = useQuery({
+    queryKey: ['matches', 'info', match?.homeTeam, match?.awayTeam, match?.round],
+    queryFn: () => getMatchInfo(match!.homeTeam, match!.awayTeam, match!.round),
+    enabled: !!match,
+    staleTime: 30_000,
+    select: data => data?.homeScore != null || data?.awayScore != null
+      ? { home: data.homeScore, away: data.awayScore }
+      : undefined,
+  })
 
-    let cancelled = false
+  const { data: othersData } = useQuery({
+    queryKey: ['predictions', 'others', matchScores?.id, user?.id],
+    queryFn: () => getMatchOtherPredictions(matchScores!.id, user!.id),
+    enabled: !!matchScores?.id && !!user,
+    staleTime: 30_000,
+  })
 
-    async function load() {
-      try {
-        const existing = await getPredictionForMatch(user!.id, match!.homeTeam, match!.awayTeam, match!.round)
-        if (!cancelled && existing) {
-          setInitialValues({
-            predictedHomeScore: existing.predictedHomeScore,
-            predictedAwayScore: existing.predictedAwayScore,
-            outcome: (existing.outcome as '1' | 'X' | '2') || null,
-            homeGoalsThreshold: existing.homeGoalsThreshold,
-            awayGoalsThreshold: existing.awayGoalsThreshold,
-          })
-          if (existing.actualHomeScore != null || existing.actualAwayScore != null) {
-            setMatchScores({ home: existing.actualHomeScore, away: existing.actualAwayScore })
-          }
-        }
-      } catch (err) {
-        console.error('Error loading prediction:', err)
-      } finally {
-        if (!cancelled) setIsLoadingPrediction(false)
+  const initialValues: PredictionFormData | null = existingPrediction
+    ? {
+        predictedHomeScore: existingPrediction.predictedHomeScore,
+        predictedAwayScore: existingPrediction.predictedAwayScore,
+        outcome: (existingPrediction.outcome as '1' | 'X' | '2') || null,
+        homeGoalsThreshold: existingPrediction.homeGoalsThreshold,
+        awayGoalsThreshold: existingPrediction.awayGoalsThreshold,
       }
-    }
+    : null
 
-    load()
-    return () => { cancelled = true }
-  }, [user, match])
+  const saveMutation = useMutation({
+    mutationFn: (prediction: PredictionFormData) =>
+      savePrediction(user!.id, match!.homeTeam, match!.awayTeam, match!.round, prediction),
+  })
 
-  useEffect(() => {
-    if (!user || !match) return
-
-    let cancelled = false
-
-    async function loadOthers() {
-      const matchInfo = await getMatchInfo(match!.homeTeam, match!.awayTeam, match!.round)
-      if (!matchInfo || cancelled) return
-
-      if (!cancelled && matchInfo.homeScore != null && matchInfo.awayScore != null) {
-        setMatchScores({ home: matchInfo.homeScore, away: matchInfo.awayScore })
-      }
-
-      const info = await getMatchOtherPredictions(matchInfo.id, user!.id)
-      if (!cancelled) {
-        setOtherPredictions(info.predictions)
-        setOtherCount(info.count)
-        setOtherNames(info.usernames)
-      }
-    }
-
-    loadOthers()
-    return () => { cancelled = true }
-  }, [user, match, isLoadingPrediction])
+  const handleSubmit = async (prediction: PredictionFormData): Promise<boolean> => {
+    const ok = await saveMutation.mutateAsync(prediction)
+    return ok
+  }
 
   if (!match) {
     return (
@@ -104,22 +81,6 @@ export function PredictPage() {
         <p>Войдите, чтобы сделать прогноз</p>
         <button onClick={() => navigate('/login')}>Войти</button>
       </div>
-    )
-  }
-
-  const handleSubmit = async (prediction: PredictionFormData): Promise<boolean> => {
-    return await savePrediction(
-      user.id,
-      match.homeTeam,
-      match.awayTeam,
-      match.round,
-      {
-        predictedHomeScore: prediction.predictedHomeScore,
-        predictedAwayScore: prediction.predictedAwayScore,
-        outcome: prediction.outcome,
-        homeGoalsThreshold: prediction.homeGoalsThreshold,
-        awayGoalsThreshold: prediction.awayGoalsThreshold,
-      }
     )
   }
 
@@ -185,10 +146,13 @@ export function PredictPage() {
   }
 
   const matchClosed = !isMatchOpen(match)
+  const finished = isMatchFinished(match.date, match.time)
+  const otherPredictions: OtherPrediction[] = othersData?.predictions ?? []
+  const otherCount = othersData?.count ?? 0
+  const otherNames = othersData?.usernames ?? []
+  const scores = matchScores ?? undefined
 
   if (matchClosed) {
-    const finished = isMatchFinished(match.date, match.time)
-
     return (
       <div className="page">
         {initialValues ? (
@@ -200,8 +164,8 @@ export function PredictPage() {
               onSubmit={handleSubmit}
               onSaved={goBack}
               isFinished={finished}
-              actualHomeScore={matchScores?.home ?? null}
-              actualAwayScore={matchScores?.away ?? null}
+              actualHomeScore={scores?.home ?? null}
+              actualAwayScore={scores?.away ?? null}
             />
           </>
         ) : (
@@ -212,8 +176,8 @@ export function PredictPage() {
             <div className="check__match">
               <div className="check__teams">
                 <span>{match.homeTeam}</span>
-                {matchScores?.home != null && matchScores?.away != null && (
-                  <span className="check__score">{matchScores.home}:{matchScores.away}</span>
+                {scores?.home != null && scores?.away != null && (
+                  <span className="check__score">{scores.home}:{scores.away}</span>
                 )}
                 <span className="check__vs">vs</span>
                 <span>{match.awayTeam}</span>
@@ -232,7 +196,7 @@ export function PredictPage() {
                <span className="check__title">Другие игроки</span>
              </div>
              <p style={{ padding: '12px 16px', color: 'var(--color-secondary)', fontSize: 'var(--font-size-sm)', textAlign: 'center' }}>
-               {otherNames.join(', ')} {otherCount === 1 ? 'сделал' : otherCount < 5 ? 'сделали' : 'сделали'} прогноз
+               {otherNames.join(', ')} {otherCount === 1 ? 'сделал' : 'сделали'} прогноз
              </p>
            </div>
          )}
@@ -291,8 +255,8 @@ export function PredictPage() {
         onSubmit={handleSubmit}
         onSaved={goBack}
         canEdit
-        actualHomeScore={matchScores?.home ?? null}
-        actualAwayScore={matchScores?.away ?? null}
+        actualHomeScore={scores?.home ?? null}
+        actualAwayScore={scores?.away ?? null}
       />
       {otherCount > 0 && (
         <div className="check" style={{ marginTop: '12px' }}>

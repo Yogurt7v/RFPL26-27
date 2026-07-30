@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { getUserPredictions, type UserPrediction } from '../api/predictions'
 import { getTeamByName } from '../lib/teams'
 import { formatScore, formatDate } from '../lib/format'
@@ -31,28 +31,12 @@ interface PredictionResultsProps {
 
 export function PredictionResults({ userId }: PredictionResultsProps) {
   const navigate = useNavigate()
-  const [predictions, setPredictions] = useState<UserPrediction[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const data = await getUserPredictions(userId)
-        if (data.length === 0) {
-          setError('У вас пока нет прогнозов')
-        } else {
-          setPredictions(data)
-        }
-      } catch (err) {
-        console.error('Error loading predictions:', err)
-        setError('Ошибка загрузки данных')
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    load()
-  }, [userId])
+  const { data: predictions = [], isLoading, error } = useQuery({
+    queryKey: ['predictions', userId],
+    queryFn: () => getUserPredictions(userId),
+    staleTime: 30_000,
+  })
 
   if (isLoading) {
     return (
@@ -89,7 +73,11 @@ export function PredictionResults({ userId }: PredictionResultsProps) {
   }
 
   if (error) {
-    return <div className="prediction-results prediction-results--empty">{error}</div>
+    return <div className="prediction-results prediction-results--empty">Ошибка загрузки данных</div>
+  }
+
+  if (predictions.length === 0) {
+    return <div className="prediction-results prediction-results--empty">У вас пока нет прогнозов</div>
   }
 
   const totalPoints = predictions.reduce((sum, p) => sum + p.pointsEarned, 0) + 30
