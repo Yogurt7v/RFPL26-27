@@ -1157,55 +1157,75 @@
   border-bottom: 1px dashed var(--color-border);
 }
 
-.prediction-results__table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.prediction-results__th,
-.prediction-results__td {
+.prediction-results__list {
   padding: var(--spacing-sm);
-  text-align: left;
-  font-variant-numeric: tabular-nums;
-  font-size: var(--font-size-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
 }
 
-.prediction-results__th {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
-  font-weight: 400;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  border-bottom: 1px dashed var(--color-border);
+.prediction-results__item {
+  cursor: pointer;
+  outline: none;
 }
 
-.prediction-results__td {
-  border-bottom: 1px dotted var(--color-border);
+.prediction-results__item:focus-visible {
+  outline: 2px solid var(--color-primary);
+  border-radius: var(--radius-md);
 }
 
-.prediction-results__row:last-child .prediction-results__td {
-  border-bottom: none;
+.prediction-results__item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
 }
 
-.prediction-results__td--match {
-  min-width: 120px;
-}
-
-.prediction-results__teams {
+.prediction-results__item-teams {
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
+  min-width: 0;
 }
 
-.prediction-results__logo {
+.prediction-results__item-logo {
   width: 20px;
   height: 20px;
   object-fit: contain;
+  flex-shrink: 0;
 }
 
-.prediction-results__td--pts {
-  text-align: center;
-  font-weight: 500;
+.prediction-results__item-team {
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+}
+
+.prediction-results__item-vs {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  font-weight: 400;
+}
+
+.prediction-results__item-date {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.prediction-results__item-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm) var(--spacing-md);
+}
+
+.prediction-results__item-info {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
 }
 
 .prediction-results__zigzag {

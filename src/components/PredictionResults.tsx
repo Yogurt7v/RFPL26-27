@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { getUserPredictions, type UserPrediction } from '../api/predictions'
 import { getTeamByName } from '../lib/teams'
 import { formatScore, formatDate } from '../lib/format'
 import { Spinner } from './Spinner'
+import { GlassCard } from './GlassCard'
+import { schedule } from '../lib/schedule'
 
 function formatGoalsThreshold(pred: UserPrediction): string {
   const parts: string[] = []
@@ -11,11 +14,24 @@ function formatGoalsThreshold(pred: UserPrediction): string {
   return parts.length > 0 ? parts.join(', ') : '—'
 }
 
+function getMatchSlug(homeTeam: string, awayTeam: string): string | undefined {
+  const m = schedule.find(s => s.homeTeam === homeTeam && s.awayTeam === awayTeam)
+  return m?.id
+}
+
+function formatPrediction(pred: UserPrediction): string {
+  if (pred.predictedHomeScore != null && pred.predictedAwayScore != null) {
+    return formatScore(pred.predictedHomeScore, pred.predictedAwayScore)
+  }
+  return pred.outcome || formatGoalsThreshold(pred)
+}
+
 interface PredictionResultsProps {
   userId: string
 }
 
 export function PredictionResults({ userId }: PredictionResultsProps) {
+  const navigate = useNavigate()
   const [predictions, setPredictions] = useState<UserPrediction[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -59,54 +75,52 @@ export function PredictionResults({ userId }: PredictionResultsProps) {
         Всего очков: <strong>{totalPoints}</strong>
       </div>
 
-      <table className="prediction-results__table">
-        <thead>
-          <tr>
-            <th className="prediction-results__th">Матч</th>
-            <th className="prediction-results__th">Дата</th>
-            <th className="prediction-results__th">Прогноз</th>
-            <th className="prediction-results__th">Результат</th>
-            <th className="prediction-results__th prediction-results__th--pts">Очки</th>
-          </tr>
-        </thead>
-        <tbody>
-          {predictions.map(pred => {
-            const home = getTeamByName(pred.homeTeam)
-            const away = getTeamByName(pred.awayTeam)
+      <div className="prediction-results__list">
+        {predictions.map(pred => {
+          const home = getTeamByName(pred.homeTeam)
+          const away = getTeamByName(pred.awayTeam)
+          const matchSlug = getMatchSlug(pred.homeTeam, pred.awayTeam)
+          const predicted = formatPrediction(pred)
+          const actual = pred.actualHomeScore != null && pred.actualAwayScore != null
+            ? formatScore(pred.actualHomeScore, pred.actualAwayScore)
+            : null
 
-            return (
-              <tr key={pred.id} className="prediction-results__row">
-                <td className="prediction-results__td prediction-results__td--match">
-                  <div className="prediction-results__teams">
-                    {home && <img src={home.logo} alt="" className="prediction-results__logo" />}
-                    <span>{pred.homeTeam}</span>
+          return (
+            <div
+              key={pred.id}
+              className="prediction-results__item"
+              onClick={() => matchSlug && navigate(`/predict/${matchSlug}`)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={e => { if (e.key === 'Enter' && matchSlug) navigate(`/predict/${matchSlug}`) }}
+            >
+              <GlassCard>
+                <div className="prediction-results__item-top">
+                  <div className="prediction-results__item-teams">
+                    {home && <img src={home.logo} alt="" className="prediction-results__item-logo" />}
+                    <span className="prediction-results__item-team">{pred.homeTeam}</span>
+                    <span className="prediction-results__item-vs">vs</span>
+                    <span className="prediction-results__item-team">{pred.awayTeam}</span>
+                    {away && <img src={away.logo} alt="" className="prediction-results__item-logo" />}
                   </div>
-                  <div className="prediction-results__teams">
-                    {away && <img src={away.logo} alt="" className="prediction-results__logo" />}
-                    <span>{pred.awayTeam}</span>
-                  </div>
-                </td>
-                <td className="prediction-results__td">
-                  {formatDate(pred.matchDate, 'short')}
-                </td>
-                <td className="prediction-results__td">
-                  {pred.predictedHomeScore != null && pred.predictedAwayScore != null
-                    ? formatScore(pred.predictedHomeScore, pred.predictedAwayScore)
-                    : pred.outcome || formatGoalsThreshold(pred)}
-                </td>
-                <td className="prediction-results__td">
-                  {pred.actualHomeScore != null && pred.actualAwayScore != null
-                    ? formatScore(pred.actualHomeScore, pred.actualAwayScore)
-                    : '—'}
-                </td>
-                <td className="prediction-results__td prediction-results__td--pts">
-                  <strong>{pred.pointsEarned}</strong>
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+                  <span className="prediction-results__item-date">{formatDate(pred.matchDate, 'short')}</span>
+                </div>
+                <div className="prediction-results__item-bottom">
+                  <span className="prediction-results__item-info">
+                    Прогноз: <strong>{predicted}</strong>
+                  </span>
+                  <span className="prediction-results__item-info">
+                    Результат: <strong>{actual || '—'}</strong>
+                  </span>
+                  <span className="prediction-results__item-info">
+                    Очки: <strong>{pred.pointsEarned}</strong>
+                  </span>
+                </div>
+              </GlassCard>
+            </div>
+          )
+        })}
+      </div>
 
       <div className="prediction-results__zigzag" />
     </div>

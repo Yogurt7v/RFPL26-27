@@ -1,11 +1,11 @@
 import { NavLink } from 'react-router-dom'
-import { SoccerBallIcon, TableIcon, TrophyIcon, SettingsIcon } from './Icons'
+import { SoccerBallIcon, TableIcon, TrophyIcon, PersonIcon } from './Icons'
 
 const navItems = [
   { to: '/', icon: SoccerBallIcon, label: 'Матчи' },
   { to: '/standings', icon: TableIcon, label: 'Таблица' },
   { to: '/leaderboard', icon: TrophyIcon, label: 'Лидеры' },
-  { to: '/settings', icon: SettingsIcon, label: 'Настройки' },
+  { to: '/settings', icon: PersonIcon, label: 'Профиль' },
 ]
 
 export function BottomNav() {
