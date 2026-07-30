@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { MatchCard } from './MatchCard'
 import { Spinner } from './Spinner'
 import { schedule, getNextMatch, getRoundByMatchId } from '../lib/schedule'
@@ -63,6 +63,7 @@ export function MatchList({ onPredict }: MatchListProps) {
   const [selectedTeam, setSelectedTeam] = useState('')
   const [nextMatchId, setNextMatchId] = useState<string | undefined>()
   const [isLoading] = useState(false)
+  const initialRoundRef = useRef(1)
   const liveMatches = useLiveMatches(selectedRound, selectedTeam)
 
   useEffect(() => {
@@ -73,6 +74,7 @@ export function MatchList({ onPredict }: MatchListProps) {
         const round = getRoundByMatchId(next.id)
         if (round) {
           setSelectedRound(round)
+          initialRoundRef.current = round
         }
       }
     }
@@ -133,6 +135,15 @@ export function MatchList({ onPredict }: MatchListProps) {
       <div className="match-list__header">
         <h2>Матчи</h2>
         <div className="match-list__filters">
+          {(selectedTeam || selectedRound !== initialRoundRef.current) && (
+            <button
+              className="match-list__reset"
+              onClick={() => { setSelectedRound(initialRoundRef.current); setSelectedTeam('') }}
+              title="Сбросить фильтры"
+            >
+              ×
+            </button>
+          )}
           {!selectedTeam && (
             <select
               value={selectedRound}
