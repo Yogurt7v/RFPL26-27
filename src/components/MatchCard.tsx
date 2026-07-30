@@ -68,7 +68,7 @@ export function MatchCard({
               {awayScore ?? 0}
             </span>
           ) : (
-            <span className="match-card__vs">VS</span>
+            <span className="match-card__vs">:</span>
           )}
         </div>
 

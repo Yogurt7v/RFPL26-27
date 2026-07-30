@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { visualizer } from 'rollup-plugin-visualizer'
 
 export default defineConfig({
   define: {
@@ -41,6 +42,22 @@ export default defineConfig({
           }
         ]
       }
-    })
+    }),
+    visualizer({
+      filename: 'dist/stats.html',
+      gzipSize: true,
+      open: false,
+    }),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (id.includes('/node_modules/react-dom') || id.includes('/node_modules/react/')) return 'vendor-react'
+          if (id.includes('/node_modules/react-router-dom')) return 'vendor-router'
+          if (id.includes('/node_modules/@supabase')) return 'vendor-supabase'
+        },
+      },
+    },
+  },
 })
