@@ -145,8 +145,7 @@ export function MatchCard({
       <div className="match-card__footer">
         {status !== 'SCHEDULED' && (
           <span className="match-card__status">
-            <span className="match-card__status-dot" />
-            {status === 'LIVE' ? 'LIVE' : 'Закончился'}
+            {status === 'LIVE' ?  <span className="match-card__status-dot" >'LIVE'</span> : null}
           </span>
         )}
       </div>

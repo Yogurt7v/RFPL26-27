@@ -66,15 +66,20 @@ function parseGameBlock(block, roundNumber) {
 
   const statusText = statusMatch[1].trim()
 
+  const TIME_RE = /^\d{1,2}:\d{2}$/
+
   let date, time
 
   if (statusText.includes(',')) {
     const [datePart, timePart] = statusText.split(',').map(s => s.trim())
     date = parseDate(datePart)
-    time = timePart
-  } else {
+    time = TIME_RE.test(timePart) ? timePart : '00:00'
+  } else if (TIME_RE.test(statusText)) {
     date = parseDate('')
     time = statusText
+  } else {
+    date = parseDate('')
+    time = '00:00'
   }
 
   const glsMatches = [...block.matchAll(/<div class="gls">([\s\S]*?)<\/div>/g)]
