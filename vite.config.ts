@@ -60,4 +60,12 @@ export default defineConfig({
       },
     },
   },
+  server: {
+    proxy: {
+      '/api/cron': {
+        target: 'https://rfpl-26-27.vercel.app',
+        changeOrigin: true,
+      },
+    },
+  },
 })

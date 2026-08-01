@@ -36,7 +36,7 @@ function dbMatchToMatch(row: Record<string, unknown>): Match {
 export async function getMatchesByRound(roundNumber: number): Promise<Match[]> {
   const { data, error } = await supabase
     .from('matches')
-    .select('*')
+    .select('id, round, home_team, away_team, home_score, away_score, match_date, status, stadium_name')
     .eq('round', roundNumber)
 
   if (error) {

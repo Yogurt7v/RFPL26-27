@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLiveMatches } from '../hooks/useLiveMatches'
 import { useFavorites } from '../hooks/useFavorites'
 import { useAuth } from '../hooks/useAuth'
@@ -11,6 +11,7 @@ import { formatDate, formatWeekday } from '../lib/format'
 import { MatchCard } from './MatchCard'
 import { FavoriteSheet } from './FavoriteSheet'
 import { getUserPredictedMatchKeys } from '../api/predictions'
+import { triggerSync } from '../api/sync'
 
 interface MatchListProps {
   onPredict?: (matchId: string) => void
@@ -40,17 +41,19 @@ export function MatchList({ onPredict }: MatchListProps) {
   const teamParam = searchParams.get('team')
   const [nextMatchId, setNextMatchId] = useState<string | undefined>()
   const [sheetMatchId, setSheetMatchId] = useState<string | null>(null)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [syncError, setSyncError] = useState<string | null>(null)
   const initialRoundRef = useRef(1)
   const hasInitializedRef = useRef(false)
 
   const { user } = useAuth()
+  const queryClient = useQueryClient()
   const {
     isFavorite,
     toggleFavorite,
     favoriteCount,
     starlets,
     glowLevel,
-    getMatchFavoritesList,
   } = useFavorites()
 
   const selectedTeam = teamParam ?? ''
@@ -157,6 +160,19 @@ export function MatchList({ onPredict }: MatchListProps) {
     setSheetMatchId(matchId)
   }, [])
 
+  const handleSync = useCallback(async () => {
+    setIsSyncing(true)
+    setSyncError(null)
+    try {
+      await triggerSync()
+      queryClient.invalidateQueries({ queryKey: ['matches'] })
+    } catch (err) {
+      setSyncError(err instanceof Error ? err.message : 'Не удалось обновить данные')
+    } finally {
+      setIsSyncing(false)
+    }
+  }, [queryClient])
+
   const liveCount = allMatches.filter(m => m.status === 'LIVE').length
 
   return (
@@ -210,7 +226,20 @@ export function MatchList({ onPredict }: MatchListProps) {
             ×
           </button>
         )}
+        <button
+          className="match-list__sync"
+          onClick={handleSync}
+          disabled={isSyncing}
+          title="Принудительно обновить данные матчей"
+        >
+          <span className={`match-list__sync-icon${isSyncing ? ' match-list__sync-icon--spin' : ''}`}>↻</span>
+          {isSyncing ? 'Обновление…' : 'Обновить'}
+        </button>
       </div>
+
+      {syncError && (
+        <div className="match-list__sync-error">{syncError}</div>
+      )}
 
       <div className="match-list__grid">
         {groupedMatches.length === 0 ? (
@@ -265,7 +294,6 @@ export function MatchList({ onPredict }: MatchListProps) {
         matchId={sheetMatchId ?? ''}
         isOpen={sheetMatchId !== null}
         onClose={() => setSheetMatchId(null)}
-        getFavorites={getMatchFavoritesList}
       />
     </div>
   )

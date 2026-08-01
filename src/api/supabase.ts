@@ -26,4 +26,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   db: {
     timeout: 60000,
   },
+  global: {
+    headers: {
+      'Cache-Control': 'no-cache, no-store',
+    },
+  },
 })

@@ -146,7 +146,7 @@ export function MatchCard({
         {status !== 'SCHEDULED' && (
           <span className="match-card__status">
             <span className="match-card__status-dot" />
-            {status === 'LIVE' ? 'LIVE' : 'FT'}
+            {status === 'LIVE' ? 'LIVE' : 'Закончился'}
           </span>
         )}
       </div>

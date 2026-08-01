@@ -4,9 +4,9 @@ import { useAuth } from './useAuth'
 import {
   addFavorite,
   removeFavorite,
-  getAllFavoritesWithUsers,
-  getTotalUsersCount,
+  getFavoritesOverview,
   type FavoriteRow,
+  type FavoritesOverview,
 } from '../api/favorites'
 
 interface Starlet {
@@ -45,19 +45,15 @@ export function useFavorites() {
   const userId = user?.id
   const queryClient = useQueryClient()
 
-  const { data: rows = [] } = useQuery({
-    queryKey: ['favorites', 'all'],
-    queryFn: getAllFavoritesWithUsers,
+  const { data: overview } = useQuery({
+    queryKey: ['favorites', 'overview'],
+    queryFn: getFavoritesOverview,
     enabled: !!userId,
     staleTime: 60_000,
   })
 
-  const { data: totalUsers = 0 } = useQuery({
-    queryKey: ['favorites', 'total-users'],
-    queryFn: getTotalUsersCount,
-    enabled: !!userId,
-    staleTime: 60_000,
-  })
+  const rows = overview?.favorites ?? []
+  const totalUsers = overview?.totalUsers ?? 0
 
   const userFavorites = useMemo(() =>
     new Set(rows.filter(r => r.userId === userId).map(r => r.matchId)),
@@ -77,27 +73,26 @@ export function useFavorites() {
       }
     },
     onMutate: async ({ matchId, wasFav }) => {
-      await queryClient.cancelQueries({ queryKey: ['favorites', 'all'] })
-      const previous = queryClient.getQueryData<FavoriteRow[]>(['favorites', 'all'])
+      await queryClient.cancelQueries({ queryKey: ['favorites', 'overview'] })
+      const previous = queryClient.getQueryData<FavoritesOverview>(['favorites', 'overview'])
 
-      queryClient.setQueryData<FavoriteRow[]>(['favorites', 'all'], old => {
+      queryClient.setQueryData<FavoritesOverview>(['favorites', 'overview'], old => {
         if (!old) return old
-        if (wasFav) {
-          return old.filter(r => !(r.matchId === matchId && r.userId === userId))
-        }
-        return [...old, { matchId, userId: userId!, username: user!.username }]
+        const favorites = wasFav
+          ? old.favorites.filter(r => !(r.matchId === matchId && r.userId === userId))
+          : [...old.favorites, { matchId, userId: userId!, username: user!.username }]
+        return { ...old, favorites }
       })
 
       return { previous }
     },
     onError: (_, __, context) => {
       if (context?.previous) {
-        queryClient.setQueryData(['favorites', 'all'], context.previous)
+        queryClient.setQueryData(['favorites', 'overview'], context.previous)
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['favorites', 'all'] })
-      queryClient.invalidateQueries({ queryKey: ['favorites', 'total-users'] })
+      queryClient.invalidateQueries({ queryKey: ['favorites', 'overview'] })
     },
   })
 
@@ -121,14 +116,6 @@ export function useFavorites() {
     [byMatch, userId]
   )
 
-  const getMatchFavoritesList = useCallback(
-    (matchId: string) => {
-      const { getMatchFavorites } = require('../api/favorites')
-      return getMatchFavorites(matchId)
-    },
-    []
-  )
-
   const glowLevel = useCallback(
     (matchId: string): 0 | 1 | 2 | 3 => {
       const count = counts.get(matchId) ?? 0
@@ -147,7 +134,6 @@ export function useFavorites() {
     toggleFavorite,
     favoriteCount,
     starlets,
-    getMatchFavoritesList,
     totalUsers,
     glowLevel,
   }

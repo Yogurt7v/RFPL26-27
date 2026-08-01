@@ -61,3 +61,23 @@ export async function getTotalUsersCount(): Promise<number> {
   if (error) return 0
   return (data as number) ?? 0
 }
+
+export interface FavoritesOverview {
+  favorites: FavoriteRow[]
+  totalUsers: number
+}
+
+export async function getFavoritesOverview(): Promise<FavoritesOverview> {
+  const { data, error } = await supabase.rpc('get_favorites_overview')
+  if (error || !data) return { favorites: [], totalUsers: 0 }
+
+  const rows = data as { match_id: string; username: string; user_id: string; total_users: number }[]
+  return {
+    favorites: rows.map(d => ({
+      matchId: d.match_id,
+      username: d.username,
+      userId: d.user_id,
+    })),
+    totalUsers: rows[0]?.total_users ?? 0,
+  }
+}
