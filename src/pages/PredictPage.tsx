@@ -34,9 +34,7 @@ export function PredictPage() {
     queryFn: () => getMatchInfo(match!.homeTeam, match!.awayTeam, match!.round),
     enabled: !!match,
     staleTime: 30_000,
-    select: data => data?.homeScore != null || data?.awayScore != null
-      ? { home: data.homeScore, away: data.awayScore }
-      : undefined,
+    select: data => data ? { id: data.id, home: data.homeScore, away: data.awayScore } : undefined,
   })
 
   const { data: othersData } = useQuery({
