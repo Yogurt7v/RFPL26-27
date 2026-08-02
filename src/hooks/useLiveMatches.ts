@@ -1,52 +1,56 @@
 import { useMemo } from 'react'
-import { useQueries, useQuery } from '@tanstack/react-query'
-import { getMatchesByRound } from '../api/matches'
-import { schedule } from '../lib/schedule'
+import { useQuery } from '@tanstack/react-query'
+import {
+  getCachedResults,
+  getCachedSchedule,
+  getResults,
+  getSchedule,
+} from '../api/matches'
 import type { Match } from '../api/matches'
 
 export function useLiveMatches(
   selectedRound: number,
   selectedTeam: string
-): { matches: Match[]; loaded: boolean } {
-  const teamRounds = useMemo(() => {
-    if (!selectedTeam) return []
-    return [...new Set(
-      schedule
-        .filter(m => m.homeTeam === selectedTeam || m.awayTeam === selectedTeam)
-        .map(m => m.round)
-    )]
-  }, [selectedTeam])
-
-  const roundQuery = useQuery({
-    queryKey: ['matches', 'round', selectedRound],
-    queryFn: () => getMatchesByRound(selectedRound),
-    enabled: !selectedTeam,
-    staleTime: 15_000,
-    refetchInterval: 30_000,
+): { matches: Match[]; loaded: boolean; isFetching: boolean } {
+  const scheduleQuery = useQuery({
+    queryKey: ['matches', 'schedule'],
+    queryFn: getSchedule,
+    staleTime: 24 * 60 * 60 * 1000,
+    placeholderData: getCachedSchedule,
   })
 
-  const teamQueries = useQueries({
-    queries: teamRounds.map(r => ({
-      queryKey: ['matches', 'round', r],
-      queryFn: () => getMatchesByRound(r),
-      staleTime: 15_000,
-      refetchInterval: 30_000,
-    })),
-    combine: results => ({
-      data: results.flatMap(r => r.data ?? []),
-      isFetched: results.every(r => r.isFetched),
-    }),
+  const resultsQuery = useQuery({
+    queryKey: ['matches', 'results'],
+    queryFn: getResults,
+    staleTime: 15 * 60 * 1000,
+    refetchInterval: 15 * 60 * 1000,
+    refetchOnMount: 'always',
+    placeholderData: getCachedResults,
   })
 
-  if (selectedTeam) {
-    return {
-      matches: teamQueries.data,
-      loaded: teamQueries.isFetched,
-    }
-  }
+  const matches = useMemo<Match[]>(() => {
+    const results = resultsQuery.data ?? []
+
+    return results
+      .filter(m => selectedTeam
+        ? m.homeTeam === selectedTeam || m.awayTeam === selectedTeam
+        : m.round === selectedRound)
+      .map(m => ({
+        id: m.id,
+        round: m.round,
+        homeTeam: m.homeTeam,
+        awayTeam: m.awayTeam,
+        homeScore: m.homeScore,
+        awayScore: m.awayScore,
+        status: m.status,
+        date: '',
+        time: '',
+      }))
+  }, [resultsQuery.data, selectedRound, selectedTeam])
 
   return {
-    matches: roundQuery.data ?? [],
-    loaded: roundQuery.isFetched,
+    matches,
+    loaded: scheduleQuery.isFetched && resultsQuery.isFetched,
+    isFetching: resultsQuery.isFetching,
   }
 }

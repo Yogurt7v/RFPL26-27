@@ -1,2 +1,2 @@
-export { getMatchesByRound, getAllMatches, getMatchesByTeam } from './matches'
-export type { Match } from './matches'
+export { getSchedule, getResults, getCachedSchedule, getCachedResults } from './matches'
+export type { Match, ScheduleEntry, ResultEntry } from './matches'
