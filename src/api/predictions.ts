@@ -26,6 +26,7 @@ export interface PredictionData {
   awayGoalsThreshold: number | null
   actualHomeScore: number | null
   actualAwayScore: number | null
+  pointsEarned: number
 }
 
 export async function getPredictionForMatch(
@@ -43,6 +44,7 @@ export async function getPredictionForMatch(
         outcome,
         home_goals_threshold,
         away_goals_threshold,
+        points_earned,
         matches!inner (id, home_score, away_score)
       `)
       .eq('user_id', userId)
@@ -64,6 +66,7 @@ export async function getPredictionForMatch(
     awayGoalsThreshold: data.away_goals_threshold as number | null,
     actualHomeScore: (match?.home_score as number) ?? null,
     actualAwayScore: (match?.away_score as number) ?? null,
+    pointsEarned: (data.points_earned as number) || 0,
   }
 }
 

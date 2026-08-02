@@ -1824,8 +1824,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(4px);
+  padding: var(--spacing-md);
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
   animation: banner-fade-in 0.3s ease-out;
 }
 
@@ -1836,14 +1837,32 @@
   flex-direction: column;
   align-items: center;
   gap: var(--spacing-md);
-  padding: var(--spacing-lg) var(--spacing-xl);
-  background-color: var(--color-card-bg);
-  color: var(--color-text);
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: min(90vw, 380px);
+  padding: clamp(20px, 5vw, 32px);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-dark) 100%);
+  color: #fff;
+  border-radius: 16px;
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.4),
+    0 0 32px rgba(26, 114, 181, 0.35);
   animation: banner-scale-in 0.3s ease-out;
-  max-width: 360px;
   text-align: center;
+}
+
+.update-banner__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background-color: #fff;
+  color: var(--color-primary);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
 @keyframes banner-fade-in {
@@ -1857,33 +1876,62 @@
 }
 
 .update-banner__text {
-  font-size: var(--font-size-sm);
-  font-weight: 500;
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .update-banner__actions {
   display: flex;
-  gap: var(--spacing-xs);
+  width: 100%;
+  gap: 10px;
 }
 
 .update-banner__btn {
-  padding: var(--spacing-xs) var(--spacing-md);
+  flex: 1;
+  height: 44px;
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
-  font-weight: 500;
+  font-weight: 700;
   cursor: pointer;
   border: none;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
+}
+
+.update-banner__btn:active {
+  transform: scale(0.97);
 }
 
 .update-banner__btn--update {
-  background-color: var(--color-primary);
-  color: white;
+  background-color: #fff;
+  color: var(--color-primary);
+  animation: banner-btn-pulse 1.6s infinite;
+}
+
+.update-banner__btn--update:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
 .update-banner__btn--dismiss {
   background-color: transparent;
-  color: var(--color-text-secondary);
-  border: 1px solid var(--color-border);
+  color: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+}
+
+.update-banner__btn--dismiss:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+@keyframes banner-btn-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(255, 255, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
 }
 
 /* Skeleton loading */

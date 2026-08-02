@@ -8,6 +8,7 @@ export function UpdateBanner() {
   return (
     <div className="update-banner__backdrop">
       <div className="update-banner">
+        <div className="update-banner__icon">↻</div>
         <div className="update-banner__text">
           Доступна новая версия приложения
         </div>

@@ -31,41 +31,40 @@ export function calculatePoints(
         ? 'X'
         : '2'
 
-  if (prediction.predictedHomeScore != null && prediction.predictedAwayScore != null) {
-    if (
-      prediction.predictedHomeScore === result.homeScore &&
-      prediction.predictedAwayScore === result.awayScore
-    ) {
-      points += SCORING.EXACT_SCORE
+  const hasScore =
+    prediction.predictedHomeScore != null && prediction.predictedAwayScore != null
+
+  const exactMatch = hasScore &&
+    prediction.predictedHomeScore === result.homeScore &&
+    prediction.predictedAwayScore === result.awayScore
+
+  if (exactMatch) {
+    points = SCORING.EXACT_SCORE + SCORING.OUTCOME
+  } else {
+    if (hasScore) {
+      const predictedOutcome: Outcome =
+        prediction.predictedHomeScore > prediction.predictedAwayScore
+          ? '1'
+          : prediction.predictedHomeScore === prediction.predictedAwayScore
+            ? 'X'
+            : '2'
+
+      if (predictedOutcome === actualOutcome) {
+        points += SCORING.OUTCOME
+      }
+    } else if (prediction.outcome != null) {
+      if (prediction.outcome === actualOutcome) {
+        points += SCORING.OUTCOME
+      }
     }
 
-    const predictedOutcome: Outcome =
-      prediction.predictedHomeScore > prediction.predictedAwayScore
-        ? '1'
-        : prediction.predictedHomeScore === prediction.predictedAwayScore
-          ? 'X'
-          : '2'
-
-    if (predictedOutcome === actualOutcome) {
-      points += SCORING.OUTCOME
+    if (prediction.homeGoalsThreshold != null && result.homeScore >= prediction.homeGoalsThreshold) {
+      points += prediction.homeGoalsThreshold
     }
-  }
 
-  if (
-    prediction.outcome != null &&
-    (prediction.predictedHomeScore == null || prediction.predictedAwayScore == null)
-  ) {
-    if (prediction.outcome === actualOutcome) {
-      points += SCORING.OUTCOME
+    if (prediction.awayGoalsThreshold != null && result.awayScore >= prediction.awayGoalsThreshold) {
+      points += prediction.awayGoalsThreshold
     }
-  }
-
-  if (prediction.homeGoalsThreshold != null && result.homeScore >= prediction.homeGoalsThreshold) {
-    points += prediction.homeGoalsThreshold
-  }
-
-  if (prediction.awayGoalsThreshold != null && result.awayScore >= prediction.awayGoalsThreshold) {
-    points += prediction.awayGoalsThreshold
   }
 
   if (points === 0) return -1

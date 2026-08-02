@@ -175,6 +175,7 @@ export function PredictPage() {
               isFinished={finished}
               actualHomeScore={scores?.home ?? null}
               actualAwayScore={scores?.away ?? null}
+              points={existingPrediction?.pointsEarned ?? null}
               onDelete={deleteMutation.mutate}
             />
           </>
