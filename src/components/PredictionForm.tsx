@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { getTeamByName } from '../lib/teams'
 import { validatePrediction, type Outcome } from '../lib/scoring'
+import type { TeamFormMatch } from '../lib/form'
+import { TeamForm } from './TeamForm'
 import { Modal } from './Modal'
 
 export interface PredictionFormData {
@@ -23,6 +25,10 @@ interface PredictionFormProps {
   onSaved?: () => void
   onDelete?: () => void
   canEdit?: boolean
+  homeForm?: TeamFormMatch[]
+  awayForm?: TeamFormMatch[]
+  homeFormLoading?: boolean
+  awayFormLoading?: boolean
 }
 
 const SCORE_OPTIONS = [0, 1, 2, 3, 4, 5]
@@ -40,6 +46,10 @@ export function PredictionForm({
   onSaved,
   canEdit = false,
   onDelete,
+  homeForm,
+  awayForm,
+  homeFormLoading = false,
+  awayFormLoading = false,
 }: PredictionFormProps) {
   const [homeScore, setHomeScore] = useState<number | ''>(initialValues?.predictedHomeScore ?? '')
   const [awayScore, setAwayScore] = useState<number | ''>(initialValues?.predictedAwayScore ?? '')
@@ -200,6 +210,20 @@ export function PredictionForm({
           </div>
         </div>
       </div>
+
+      {homeForm !== undefined && awayForm !== undefined && !homeFormLoading && !awayFormLoading && (
+        <div className="check__form-block">
+          <div className="check__form-side">
+            {/*<span className="check__form-team">{homeTeam}</span>*/}
+            <TeamForm teamName={homeTeam} results={homeForm} />
+          </div>
+          <span className="check__form-vs"></span>
+          <div className="check__form-side">
+            {/*<span className="check__form-team">{awayTeam}</span>*/}
+            <TeamForm teamName={awayTeam} results={awayForm} />
+          </div>
+        </div>
+      )}
 
       {saveError && (
         <div className="check__error" style={{ padding: '8px 16px', color: 'var(--color-error)', fontSize: 'var(--font-size-sm)' }}>

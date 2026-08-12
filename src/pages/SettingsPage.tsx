@@ -4,7 +4,6 @@ import { useAuth } from '../hooks/useAuth'
 import { getSecurityQuestion, setSecurityQuestion, SECURITY_QUESTIONS } from '../api/auth'
 import { LogoutIcon } from '../components/Icons'
 import { PredictionResults } from '../components/PredictionResults'
-import { APP_VERSION } from '../config'
 
 const FONT_SIZE_LABELS: Record<number, string> = {
   1: 'Очень маленький',
@@ -169,7 +168,7 @@ export function SettingsPage() {
       {user && <PredictionResults userId={user.id} />}
 
       <div className="settings__version">
-        Версия {APP_VERSION}
+        Версия 1.2.2
       </div>
     </div>
   )

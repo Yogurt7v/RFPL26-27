@@ -1,7 +1,10 @@
 import { useParams, useNavigate } from 'react-router-dom'
+import { useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PredictionForm, type PredictionFormData } from '../components/PredictionForm'
 import { savePrediction, deletePrediction, getPredictionForMatch, getMatchInfo, getMatchOtherPredictions, type OtherPrediction } from '../api/predictions'
+import { getResults, getCachedResults } from '../api/matches'
+import { getTeamLastResults } from '../lib/form'
 import { schedule, isMatchOpen } from '../lib/schedule'
 import { useAuth } from '../hooks/useAuth'
 
@@ -43,6 +46,22 @@ export function PredictPage() {
     enabled: !!matchScores?.id && !!user,
     staleTime: 30_000,
   })
+
+  const { data: allResults = [], isLoading: isLoadingResults } = useQuery({
+    queryKey: ['matches', 'results'],
+    queryFn: getResults,
+    staleTime: 15 * 60 * 1000,
+    placeholderData: getCachedResults,
+  })
+
+  const homeForm = useMemo(
+    () => match ? getTeamLastResults(allResults, match.homeTeam) : [],
+    [allResults, match],
+  )
+  const awayForm = useMemo(
+    () => match ? getTeamLastResults(allResults, match.awayTeam) : [],
+    [allResults, match],
+  )
 
   const initialValues: PredictionFormData | null = existingPrediction
     ? {
@@ -100,19 +119,19 @@ export function PredictPage() {
           <div className="check__header">
             <div className="skeleton" />
           </div>
-          <div className="check__match">
-            <div className="check__teams">
-              <div className="check__team">
-                <div className="skeleton check__skeleton-logo" />
-                <div className="skeleton check__skeleton-team-name" />
-              </div>
-              <span className="check__vs">vs</span>
-              <div className="check__team check__team--right">
-                <div className="skeleton check__skeleton-team-name" />
-                <div className="skeleton check__skeleton-logo" />
+            <div className="check__match">
+              <div className="check__teams">
+                <div className="check__team">
+                  <div className="skeleton check__skeleton-logo" />
+                  <div className="skeleton check__skeleton-team-name" />
+                </div>
+                <span className="check__vs">vs</span>
+                <div className="check__team check__team--right">
+                  <div className="skeleton check__skeleton-team-name" />
+                  <div className="skeleton check__skeleton-logo" />
+                </div>
               </div>
             </div>
-          </div>
           <div className="check__sections">
             <div className="check__section">
               <div className="check__section-label"><div className="skeleton" /></div>
@@ -199,7 +218,7 @@ export function PredictPage() {
              <span>{otherNames.join(', ')} {otherCount === 1 ? 'сделал' : 'сделали'} прогноз</span>
            </div>
          )}
- 
+
           {otherCount > 0 && finished && (
             <div className="predict-others-table">
               <h3 className="predict-others-table__title">Прогнозы других игроков</h3>
@@ -229,7 +248,7 @@ export function PredictPage() {
               ))}
             </div>
           )}
- 
+
           <button
             className="btn btn--secondary predict-page__back"
             onClick={goBack}
@@ -252,6 +271,10 @@ export function PredictPage() {
         actualHomeScore={scores?.home ?? null}
         actualAwayScore={scores?.away ?? null}
         onDelete={deleteMutation.mutate}
+        homeForm={homeForm}
+        awayForm={awayForm}
+        homeFormLoading={isLoadingResults}
+        awayFormLoading={isLoadingResults}
       />
       {otherCount > 0 && (
         <div className="predict-others">
