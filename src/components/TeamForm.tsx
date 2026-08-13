@@ -54,7 +54,7 @@ export function TeamForm({ teamName, results }: TeamFormProps) {
               className={`check__form-dot check__form-dot--${match.outcome.toLowerCase()}${open && activeIdx === i ? ' check__form-dot--active' : ''}`}
               onClick={() => toggle(i)}
               aria-expanded={open}
-              aria-label={`Тур ${match.round}: ${teamName} ${match.score} ${match.opponent}`}
+              aria-label={`Тур ${match.round}: ${match.home ? `${teamName} ${match.scored}:${match.conceded} ${match.opponent}` : `${match.opponent} ${match.conceded}:${match.scored} ${teamName}`}`}
             >
               {match.score}
             </button>
@@ -70,8 +70,8 @@ export function TeamForm({ teamName, results }: TeamFormProps) {
               <div key={i} className={`check__form-row${i === activeIdx ? ' check__form-row--active' : ''}`}>
                 <span className="check__form-row-match">
                   {m.home
-                    ? `${teamShort} ${m.score} ${oppShort}`
-                    : `${oppShort} ${m.score} ${teamShort}`}
+                    ? `${teamShort} ${m.scored}:${m.conceded} ${oppShort}`
+                    : `${oppShort} ${m.conceded}:${m.scored} ${teamShort}`}
                 </span>
               </div>
             )

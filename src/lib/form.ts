@@ -4,6 +4,8 @@ export type FormOutcome = 'W' | 'D' | 'L'
 
 export interface TeamFormMatch {
   score: string
+  scored: number
+  conceded: number
   outcome: FormOutcome
   round: number
   opponent: string
@@ -27,6 +29,8 @@ export function getTeamLastResults(
       const outcome: FormOutcome = scored > conceded ? 'W' : scored < conceded ? 'L' : 'D'
       return {
         score: `${scored}:${conceded}`,
+        scored,
+        conceded,
         outcome,
         round: m.round,
         opponent: isHome ? m.awayTeam : m.homeTeam,
