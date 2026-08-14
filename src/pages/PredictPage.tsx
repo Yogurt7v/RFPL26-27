@@ -73,12 +73,15 @@ export function PredictPage() {
       }
     : null
 
+  const queryClient = useQueryClient()
+
   const saveMutation = useMutation({
     mutationFn: (prediction: PredictionFormData) =>
       savePrediction(user!.id, match!.homeTeam, match!.awayTeam, match!.round, prediction),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['predictions'] })
+    },
   })
-
-  const queryClient = useQueryClient()
 
   const deleteMutation = useMutation({
     mutationFn: () =>

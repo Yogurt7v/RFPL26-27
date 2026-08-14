@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getTeamByName } from '../lib/teams'
 import { validatePrediction, type Outcome } from '../lib/scoring'
 import type { TeamFormMatch } from '../lib/form'
@@ -60,6 +60,18 @@ export function PredictionForm({
   const [isSaved, setIsSaved] = useState(!!initialValues)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+
+  const initialSnapshot = JSON.stringify(initialValues)
+
+  useEffect(() => {
+    if (!initialValues) return
+    setHomeScore(initialValues.predictedHomeScore ?? '')
+    setAwayScore(initialValues.predictedAwayScore ?? '')
+    setOutcome((initialValues.outcome as Outcome) || '')
+    setHomeGoalsThreshold(initialValues.homeGoalsThreshold ?? '')
+    setAwayGoalsThreshold(initialValues.awayGoalsThreshold ?? '')
+    setIsSaved(true)
+  }, [initialSnapshot])
 
   const home = getTeamByName(homeTeam)
   const away = getTeamByName(awayTeam)

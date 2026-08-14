@@ -265,7 +265,7 @@ export function getNextMatch(): ScheduleMatch | undefined {
   const now = new Date()
 
   for (const match of schedule) {
-    const matchDate = new Date(`${match.date}T${match.time}:00`)
+    const matchDate = new Date(`${match.date}T${match.time}:00+03:00`)
     if (matchDate > now) {
       return match
     }

@@ -307,7 +307,7 @@ function findNextMatchForTeam(teamName: string): string | undefined {
   const now = new Date()
   const teamSchedule = getMatchesByTeam(teamName)
   for (const match of teamSchedule) {
-    const matchDate = new Date(`${match.date}T${match.time}:00`)
+    const matchDate = new Date(`${match.date}T${match.time}:00+03:00`)
     if (matchDate > now) return match.id
   }
   return undefined
