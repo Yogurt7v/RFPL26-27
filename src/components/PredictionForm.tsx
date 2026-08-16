@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { getTeamByName } from '../lib/teams'
 import { validatePrediction, type Outcome } from '../lib/scoring'
 import type { TeamFormMatch } from '../lib/form'
+import type { SaveResult } from '../api/predictions'
 import { TeamForm } from './TeamForm'
 import { Modal } from './Modal'
 
@@ -21,7 +22,7 @@ interface PredictionFormProps {
   actualAwayScore?: number | null
   points?: number | null
   initialValues?: PredictionFormData | null
-  onSubmit: (prediction: PredictionFormData) => Promise<boolean>
+  onSubmit: (prediction: PredictionFormData) => Promise<SaveResult>
   onSaved?: () => void
   onDelete?: () => void
   canEdit?: boolean
@@ -94,11 +95,17 @@ export function PredictionForm({
     setIsSubmitting(true)
     setSaveError(null)
     try {
-      const ok = await onSubmit(prediction)
-      if (ok) {
+      const result = await onSubmit(prediction)
+      if (result.ok) {
         setIsSaved(true)
       } else {
-        setSaveError('Не удалось сохранить прогноз')
+        const message =
+          result.reason === 'not-open'
+            ? 'Матч уже начался или завершён — прогноз сохранить нельзя'
+            : result.reason === 'not-found'
+              ? 'Матч не найден в базе данных'
+              : 'Не удалось сохранить прогноз'
+        setSaveError(message)
       }
     } catch {
       setSaveError('Ошибка сохранения')
@@ -127,7 +134,7 @@ export function PredictionForm({
         <div className="check__saved-match">
           {homeTeam}
           <span className="check__score">
-            {actualHomeScore != null && actualAwayScore != null ? `${actualHomeScore}:${actualAwayScore}` : ':'}
+            {actualHomeScore != null && actualAwayScore != null ? `${actualHomeScore} : ${actualAwayScore}` : ' : '}
           </span>
           {awayTeam}
         </div>

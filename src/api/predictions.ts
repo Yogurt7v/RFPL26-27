@@ -28,6 +28,7 @@ export interface UserPrediction {
 }
 
 export interface PredictionData {
+  matchId?: number
   predictedHomeScore: number | null
   predictedAwayScore: number | null
   outcome: string | null
@@ -69,6 +70,7 @@ export async function getPredictionForMatch(
   const match = data.matches as Record<string, unknown> | null
 
   return {
+    matchId: match?.id as number | undefined,
     predictedHomeScore: data.predicted_home_score as number | null,
     predictedAwayScore: data.predicted_away_score as number | null,
     outcome: data.outcome as string | null,
@@ -78,12 +80,6 @@ export async function getPredictionForMatch(
     actualAwayScore: (match?.away_score as number) ?? null,
     pointsEarned: (data.points_earned as number) || 0,
   }
-}
-
-export interface MatchInfo {
-  id: number
-  homeScore: number | null
-  awayScore: number | null
 }
 
 export async function findMatchId(homeTeam: string, awayTeam: string, round: number): Promise<number | null> {
@@ -104,29 +100,9 @@ export async function findMatchId(homeTeam: string, awayTeam: string, round: num
   return data?.id ?? null
 }
 
-export async function getMatchInfo(homeTeam: string, awayTeam: string, round: number): Promise<MatchInfo | null> {
-  const { data, error } = await withRetry(() =>
-    supabase
-      .from('matches')
-      .select('id, home_score, away_score')
-      .eq('home_team', homeTeam)
-      .eq('away_team', awayTeam)
-      .eq('round', round)
-      .single()
-  )
-
-  if (error && !isNoRowsError(error)) {
-    logQueryError('getMatchInfo', error)
-  }
-
-  if (!data) return null
-
-  return {
-    id: data.id as number,
-    homeScore: (data.home_score as number) ?? null,
-    awayScore: (data.away_score as number) ?? null,
-  }
-}
+export type SaveResult =
+  | { ok: true }
+  | { ok: false; reason: 'not-open' | 'not-found' | 'error' }
 
 export async function savePrediction(
   userId: string,
@@ -134,46 +110,34 @@ export async function savePrediction(
   awayTeam: string,
   round: number,
   prediction: PredictionData
-): Promise<boolean> {
-  const matchId = await findMatchId(homeTeam, awayTeam, round)
-  if (matchId == null) {
-    console.error('Match not found in Supabase:', homeTeam, 'vs', awayTeam, 'round', round)
-    return false
-  }
-
-  const { data: match, error: statusError } = await supabase
-    .from('matches')
-    .select('status')
-    .eq('id', matchId)
-    .single()
-
-  if (statusError && !isNoRowsError(statusError)) {
-    logQueryError('savePrediction:status', statusError)
-  }
-
-  if (match && match.status !== 'SCHEDULED') {
-    console.error('Prediction not saved: match is not open for predictions:', homeTeam, 'vs', awayTeam, 'round', round, 'status:', match.status)
-    return false
-  }
-
-  const { error } = await supabase
-    .from('predictions')
-    .upsert({
-      user_id: userId,
-      match_id: matchId,
-      predicted_home_score: prediction.predictedHomeScore,
-      predicted_away_score: prediction.predictedAwayScore,
-      outcome: prediction.outcome,
-      home_goals_threshold: prediction.homeGoalsThreshold,
-      away_goals_threshold: prediction.awayGoalsThreshold,
-    }, { onConflict: 'user_id,match_id' })
+): Promise<SaveResult> {
+  const { data, error } = await withRetry(() =>
+    supabase.rpc('save_prediction', {
+      p_user_id: userId,
+      p_home_team: homeTeam,
+      p_away_team: awayTeam,
+      p_round: round,
+      p_predicted_home: prediction.predictedHomeScore,
+      p_predicted_away: prediction.predictedAwayScore,
+      p_outcome: prediction.outcome,
+      p_home_threshold: prediction.homeGoalsThreshold,
+      p_away_threshold: prediction.awayGoalsThreshold,
+    })
+  )
 
   if (error) {
     console.error('Error saving prediction:', error)
-    return false
+    return { ok: false, reason: 'error' }
   }
 
-  return true
+  if (data === -1) {
+    console.error('Prediction not saved: match is not open for predictions:', homeTeam, 'vs', awayTeam, 'round', round)
+    return { ok: false, reason: 'not-open' }
+  }
+
+  if (data === 1) return { ok: true }
+
+  return { ok: false, reason: 'not-found' }
 }
 
 export async function deletePrediction(
@@ -182,24 +146,21 @@ export async function deletePrediction(
   awayTeam: string,
   round: number
 ): Promise<boolean> {
-  const matchId = await findMatchId(homeTeam, awayTeam, round)
-  if (matchId == null) {
-    console.error('Match not found in Supabase:', homeTeam, 'vs', awayTeam, 'round', round)
-    return false
-  }
-
-  const { error } = await supabase
-    .from('predictions')
-    .delete()
-    .eq('user_id', userId)
-    .eq('match_id', matchId)
+  const { data, error } = await withRetry(() =>
+    supabase.rpc('delete_prediction', {
+      p_user_id: userId,
+      p_home_team: homeTeam,
+      p_away_team: awayTeam,
+      p_round: round,
+    })
+  )
 
   if (error) {
     console.error('Error deleting prediction:', error)
     return false
   }
 
-  return true
+  return data === true
 }
 
 export async function getUserPredictions(userId: string): Promise<UserPrediction[]> {

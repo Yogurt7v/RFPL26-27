@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PredictionForm, type PredictionFormData } from '../components/PredictionForm'
-import { savePrediction, deletePrediction, getPredictionForMatch, getMatchInfo, getMatchOtherPredictions, type OtherPrediction } from '../api/predictions'
+import { savePrediction, deletePrediction, getPredictionForMatch, findMatchId, getMatchOtherPredictions, type OtherPrediction, type SaveResult } from '../api/predictions'
 import { getResults, getCachedResults } from '../api/matches'
 import { getTeamLastResults } from '../lib/form'
 import { schedule, isMatchOpen } from '../lib/schedule'
@@ -32,18 +32,19 @@ export function PredictPage() {
     staleTime: 30_000,
   })
 
-  const { data: matchScores } = useQuery({
-    queryKey: ['matches', 'info', match?.homeTeam, match?.awayTeam, match?.round],
-    queryFn: () => getMatchInfo(match!.homeTeam, match!.awayTeam, match!.round),
-    enabled: !!match,
+  const { data: matchDbId } = useQuery({
+    queryKey: ['matches', 'db-id', match?.homeTeam, match?.awayTeam, match?.round],
+    queryFn: () => findMatchId(match!.homeTeam, match!.awayTeam, match!.round),
+    enabled: !!match && !isLoadingPrediction && !existingPrediction?.matchId,
     staleTime: 30_000,
-    select: data => data ? { id: data.id, home: data.homeScore, away: data.awayScore } : undefined,
   })
 
+  const resolvedMatchId = existingPrediction?.matchId ?? matchDbId ?? undefined
+
   const { data: othersData } = useQuery({
-    queryKey: ['predictions', 'others', matchScores?.id, user?.id],
-    queryFn: () => getMatchOtherPredictions(matchScores!.id, user!.id),
-    enabled: !!matchScores?.id && !!user,
+    queryKey: ['predictions', 'others', resolvedMatchId, user?.id],
+    queryFn: () => getMatchOtherPredictions(resolvedMatchId!, user!.id),
+    enabled: !!resolvedMatchId && !!user,
     staleTime: 30_000,
   })
 
@@ -53,6 +54,14 @@ export function PredictPage() {
     staleTime: 15 * 60 * 1000,
     placeholderData: getCachedResults,
   })
+
+  const matchScores = useMemo(() => {
+    if (!match) return undefined
+    const r = allResults.find(
+      m => m.homeTeam === match.homeTeam && m.awayTeam === match.awayTeam && m.round === match.round
+    )
+    return r ? { home: r.homeScore, away: r.awayScore } : undefined
+  }, [allResults, match])
 
   const homeForm = useMemo(
     () => match ? getTeamLastResults(allResults, match.homeTeam) : [],
@@ -92,10 +101,8 @@ export function PredictPage() {
     },
   })
 
-  const handleSubmit = async (prediction: PredictionFormData): Promise<boolean> => {
-    const ok = await saveMutation.mutateAsync(prediction)
-    return ok
-  }
+  const handleSubmit = async (prediction: PredictionFormData): Promise<SaveResult> =>
+    saveMutation.mutateAsync(prediction)
 
   if (!match) {
     return (
