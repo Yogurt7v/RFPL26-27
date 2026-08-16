@@ -173,7 +173,7 @@ export function MatchList({ onPredict }: MatchListProps) {
     }
   }, [queryClient])
 
-  const liveCount = allMatches.filter(m => m.status === 'LIVE').length
+  const liveCount = allMatches.filter(m => m.status === 'LIVE' || m.status === 'HALFTIME').length
 
   return (
     <div className="match-list">

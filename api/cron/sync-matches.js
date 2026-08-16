@@ -107,8 +107,8 @@ function parseGameBlock(block, roundNumber) {
     away_team: away,
     match_date: `${date}T${time}:00+03:00`,
     status,
-    home_score: homeScore ?? 0,
-    away_score: awayScore ?? 0,
+    home_score: homeScore ?? null,
+    away_score: awayScore ?? null,
     round: roundNumber,
   }
 }

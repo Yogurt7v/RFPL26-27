@@ -15,7 +15,7 @@ export interface Match {
   awayScore: number | null
   date: string
   time: string
-  status: 'SCHEDULED' | 'LIVE' | 'FINISHED'
+  status: 'SCHEDULED' | 'LIVE' | 'FINISHED' | 'HALFTIME'
   stadium?: string
 }
 

@@ -1,6 +1,15 @@
 import { supabase } from './supabase'
 import { withRetry } from './retry'
 
+function isNoRowsError(error: { code?: string } | null): boolean {
+  return !!error && error.code === 'PGRST116'
+}
+
+function logQueryError(context: string, error: { message?: string } | null): void {
+  if (!error) return
+  console.error(`${context}:`, error.message)
+}
+
 export interface UserPrediction {
   id: number
   matchId: number
@@ -35,7 +44,7 @@ export async function getPredictionForMatch(
   awayTeam: string,
   round: number
 ): Promise<PredictionData | null> {
-  const { data } = await withRetry(() =>
+  const { data, error } = await withRetry(() =>
     supabase
       .from('predictions')
       .select(`
@@ -54,6 +63,7 @@ export async function getPredictionForMatch(
       .maybeSingle()
   )
 
+  logQueryError('getPredictionForMatch', error)
   if (!data) return null
 
   const match = data.matches as Record<string, unknown> | null
@@ -77,7 +87,7 @@ export interface MatchInfo {
 }
 
 export async function findMatchId(homeTeam: string, awayTeam: string, round: number): Promise<number | null> {
-  const { data } = await withRetry(() =>
+  const { data, error } = await withRetry(() =>
     supabase
       .from('matches')
       .select('id')
@@ -87,11 +97,15 @@ export async function findMatchId(homeTeam: string, awayTeam: string, round: num
       .single()
   )
 
+  if (error && !isNoRowsError(error)) {
+    logQueryError('findMatchId', error)
+  }
+
   return data?.id ?? null
 }
 
 export async function getMatchInfo(homeTeam: string, awayTeam: string, round: number): Promise<MatchInfo | null> {
-  const { data } = await withRetry(() =>
+  const { data, error } = await withRetry(() =>
     supabase
       .from('matches')
       .select('id, home_score, away_score')
@@ -100,6 +114,10 @@ export async function getMatchInfo(homeTeam: string, awayTeam: string, round: nu
       .eq('round', round)
       .single()
   )
+
+  if (error && !isNoRowsError(error)) {
+    logQueryError('getMatchInfo', error)
+  }
 
   if (!data) return null
 
@@ -120,6 +138,21 @@ export async function savePrediction(
   const matchId = await findMatchId(homeTeam, awayTeam, round)
   if (matchId == null) {
     console.error('Match not found in Supabase:', homeTeam, 'vs', awayTeam, 'round', round)
+    return false
+  }
+
+  const { data: match, error: statusError } = await supabase
+    .from('matches')
+    .select('status')
+    .eq('id', matchId)
+    .single()
+
+  if (statusError && !isNoRowsError(statusError)) {
+    logQueryError('savePrediction:status', statusError)
+  }
+
+  if (match && match.status !== 'SCHEDULED') {
+    console.error('Prediction not saved: match is not open for predictions:', homeTeam, 'vs', awayTeam, 'round', round, 'status:', match.status)
     return false
   }
 
@@ -238,12 +271,17 @@ export interface MatchPredictionsInfo {
 }
 
 export async function getUserPredictedMatchKeys(userId: string): Promise<Set<string>> {
-  const { data, error } = await supabase
-    .from('predictions')
-    .select('matches!inner(round, home_team, away_team)')
-    .eq('user_id', userId)
+  const { data, error } = await withRetry(() =>
+    supabase
+      .from('predictions')
+      .select('matches!inner(round, home_team, away_team)')
+      .eq('user_id', userId)
+  )
 
-  if (error || !data) return new Set()
+  if (error || !data) {
+    logQueryError('getUserPredictedMatchKeys', error)
+    return new Set()
+  }
   return new Set(
     (data as any[]).map(d => `${d.matches.round}|${d.matches.home_team}|${d.matches.away_team}`)
   )

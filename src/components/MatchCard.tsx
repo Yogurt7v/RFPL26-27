@@ -17,7 +17,7 @@ interface MatchCardProps {
   time: string
   homeScore?: number | null
   awayScore?: number | null
-  status: 'SCHEDULED' | 'LIVE' | 'FINISHED'
+  status: 'SCHEDULED' | 'LIVE' | 'FINISHED' | 'HALFTIME'
   onClick?: () => void
   isNext?: boolean
   id?: string
@@ -126,7 +126,7 @@ export function MatchCard({
         </div>
 
         <div className="match-card__score">
-          {status === 'FINISHED' || status === 'LIVE' ? (
+          {status === 'FINISHED' || status === 'LIVE' || status === 'HALFTIME' ? (
             <span className="match-card__score-value">
               {homeScore ?? 0}
               <span className="match-card__score-sep">:</span>
@@ -146,6 +146,7 @@ export function MatchCard({
         {status !== 'SCHEDULED' && (
           <span className="match-card__status">
             {status === 'LIVE' ?  <span className="match-card__status-dot" >'LIVE'</span> : null}
+            {status === 'HALFTIME' ? 'ПЕРЕРЫВ' : null}
           </span>
         )}
       </div>
