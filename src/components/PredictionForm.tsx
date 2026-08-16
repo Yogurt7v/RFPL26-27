@@ -126,12 +126,9 @@ export function PredictionForm({
 
         <div className="check__saved-match">
           {homeTeam}
-          {actualHomeScore != null && actualAwayScore != null && (
-            <span className="check__score">{actualHomeScore}:{actualAwayScore}</span>
-          )}
-          {actualHomeScore ==  null && actualAwayScore == null && (
-            <span className="check__score">:</span>
-          )}
+          <span className="check__score">
+            {actualHomeScore != null && actualAwayScore != null ? `${actualHomeScore}:${actualAwayScore}` : ':'}
+          </span>
           {awayTeam}
         </div>
 
