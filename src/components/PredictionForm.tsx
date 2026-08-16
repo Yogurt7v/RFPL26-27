@@ -129,6 +129,9 @@ export function PredictionForm({
           {actualHomeScore != null && actualAwayScore != null && (
             <span className="check__score">{actualHomeScore}:{actualAwayScore}</span>
           )}
+          {actualHomeScore ==  null && actualAwayScore == null && (
+            <span className="check__score">:</span>
+          )}
           {awayTeam}
         </div>
 
