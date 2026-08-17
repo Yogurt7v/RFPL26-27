@@ -13,6 +13,12 @@
   overflow-y: auto;
 }
 
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
 /* Header */
 .header {
   position: fixed;
@@ -29,15 +35,15 @@
       -45deg,
       transparent,
       transparent 36px,
-      rgba(37, 128, 195, 0.25) 36px,
-      rgba(37, 128, 195, 0.25) 52px
+      var(--header-stripe-primary) 36px,
+      var(--header-stripe-primary) 52px
     ),
     repeating-linear-gradient(
       -45deg,
       transparent,
       transparent 72px,
-      rgba(230, 51, 58, 0.22) 72px,
-      rgba(230, 51, 58, 0.22) 88px
+      var(--header-stripe-accent) 72px,
+      var(--header-stripe-accent) 88px
     ),
     var(--color-bg-card);
 }

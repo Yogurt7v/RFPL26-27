@@ -13,7 +13,7 @@ export function StandingsTable() {
     return (
       <div className="standings-table">
         <h2 className="standings-table__title">Турнирная таблица</h2>
-        <div className="content-enter" style={{ overflowX: 'auto' }}>
+        <div className="content-enter table-scroll">
           <table className="standings-table__table">
             <thead>
               <tr>
@@ -61,7 +61,7 @@ export function StandingsTable() {
   }
 
   if (error || standings.length === 0) {
-    return <div className="standings-table" style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+    return <div className="standings-table error-fallback">
       {error ? 'Ошибка загрузки данных' : 'Не удалось загрузить турнирную таблицу'}
     </div>
   }
@@ -70,7 +70,7 @@ export function StandingsTable() {
     <div className="standings-table">
       <h2 className="standings-table__title">Турнирная таблица</h2>
 
-      <div className="content-enter" style={{ overflowX: 'auto' }}>
+      <div className="content-enter table-scroll">
         <table className="standings-table__table">
           <thead>
             <tr>

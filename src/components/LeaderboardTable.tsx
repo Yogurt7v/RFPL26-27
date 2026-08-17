@@ -52,7 +52,7 @@ export function LeaderboardTable({ currentUserId }: LeaderboardTableProps) {
 
   if (error || entries.length === 0) {
     return (
-      <div className="leaderboard-table" style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+      <div className="leaderboard-table error-fallback">
         {error ? 'Ошибка загрузки данных' : 'Пока нет данных для таблицы лидеров'}
       </div>
     )

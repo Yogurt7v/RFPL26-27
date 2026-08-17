@@ -7,7 +7,6 @@ import { Layout } from './components/Layout'
 import { Spinner } from './components/Spinner'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { UpdateBanner } from './components/UpdateBanner'
-import './App.css'
 
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'))

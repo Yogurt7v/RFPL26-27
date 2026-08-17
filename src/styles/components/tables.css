@@ -1,0 +1,159 @@
+/* Standings Table */
+.standings-table {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.standings-table__title {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--spacing-md);
+}
+
+.standings-table__table {
+  width: 100%;
+  min-width: 480px;
+  border-collapse: collapse;
+}
+
+.standings-table__th,
+.standings-table__td {
+  padding: var(--spacing-sm);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--font-size-sm);
+}
+
+.standings-table__th {
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--color-border);
+}
+
+.standings-table__td {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.standings-table__row:last-child .standings-table__td {
+  border-bottom: none;
+}
+
+.standings-table__th--team,
+.standings-table__td--team {
+  text-align: left;
+}
+
+.standings-table__th--pos,
+.standings-table__td--pos {
+  width: 36px;
+  font-weight: 600;
+}
+
+.standings-table__th--pts,
+.standings-table__td--pts {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.standings-table__pos-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.standings-table__pos-badge--1 {
+  background: var(--color-gold);
+  color: white;
+}
+
+.standings-table__pos-badge--2 {
+  background: #A0A4A8;
+  color: white;
+}
+
+.standings-table__pos-badge--3 {
+  background: #CD7F32;
+  color: white;
+}
+
+.standings-table__logo {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.standings-table__team-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* Leaderboard Table */
+.leaderboard-table {
+  width: 100%;
+}
+
+.leaderboard-table__title {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--spacing-md);
+}
+
+.leaderboard-table__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.leaderboard-table__th,
+.leaderboard-table__td {
+  padding: var(--spacing-sm);
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--font-size-sm);
+}
+
+.leaderboard-table__th {
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--color-border);
+}
+
+.leaderboard-table__td {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.leaderboard-table__row:last-child .leaderboard-table__td {
+  border-bottom: none;
+}
+
+.leaderboard-table__td--pos,
+.leaderboard-table__th--pos {
+  width: 40px;
+  text-align: center;
+}
+
+.leaderboard-table__td--pts,
+.leaderboard-table__th--pts {
+  text-align: center;
+  font-weight: 700;
+  font-size: var(--font-size-lg);
+  font-variant-numeric: tabular-nums;
+}
+
+.leaderboard-table__row--current {
+  background-color: var(--color-primary-light);
+  border-left: 3px solid var(--color-primary);
+}

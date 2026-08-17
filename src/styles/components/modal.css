@@ -1,0 +1,70 @@
+/* ========== Modal ========== */
+.modal__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 999;
+  animation: fadeIn 200ms ease;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: var(--color-bg-card);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  overflow-y: auto;
+  animation: slideDown 250ms ease;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  padding: var(--spacing-lg);
+}
+
+.modal__header {
+  margin-bottom: var(--spacing-md);
+}
+
+.modal__title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.modal__body {
+  color: var(--color-text);
+}
+
+.modal__text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin: 0 0 var(--spacing-md);
+}
+
+.modal__actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.modal__actions .btn {
+  flex: 1;
+}
+
+@media (min-width: 768px) {
+  .modal {
+    left: 50%;
+    right: auto;
+    width: 400px;
+    bottom: auto;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: var(--radius-lg);
+    animation: fadeIn 200ms ease;
+  }
+
+  .modal__backdrop {
+    background: rgba(0, 0, 0, 0.5);
+  }
+}

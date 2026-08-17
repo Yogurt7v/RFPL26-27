@@ -79,7 +79,7 @@ export function ResetPasswordPage() {
         <div className="login-form__inner">
           {step === 'username' && (
             <form onSubmit={handleUsernameSubmit}>
-              <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginBottom: '16px', textAlign: 'center' }}>
+              <p className="reset-hint">
                 Введите ваш логин, чтобы восстановить пароль через контрольный вопрос
               </p>
               <input
@@ -99,9 +99,8 @@ export function ResetPasswordPage() {
               )}
               <button
                 type="button"
-                className="btn btn--secondary btn--full"
+                className="btn btn--secondary btn--full reset-back"
                 onClick={() => navigate('/login')}
-                style={{ marginTop: '8px' }}
               >
                 Назад
               </button>
@@ -110,7 +109,7 @@ export function ResetPasswordPage() {
 
           {step === 'reset' && (
             <form onSubmit={handleResetSubmit}>
-              <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text)', marginBottom: '16px', textAlign: 'center', fontWeight: 500 }}>
+              <p className="reset-question">
                 {question}
               </p>
               <input
