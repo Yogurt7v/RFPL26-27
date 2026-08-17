@@ -10,7 +10,7 @@ import { teams } from '../lib/teams'
 import { formatDate, formatWeekday } from '../lib/format'
 import { MatchCard } from './MatchCard'
 import { FavoriteSheet } from './FavoriteSheet'
-import { getUserPredictedMatchKeys } from '../api/predictions'
+import { getUserPredictedMatchKeys, getCachedPredictedKeys } from '../api/predictions'
 import { triggerSync } from '../api/sync'
 
 interface MatchListProps {
@@ -86,6 +86,7 @@ export function MatchList({ onPredict }: MatchListProps) {
     queryFn: () => getUserPredictedMatchKeys(user!.id),
     enabled: !!user?.id,
     staleTime: 60_000,
+    placeholderData: user?.id ? () => getCachedPredictedKeys(user.id) : undefined,
   })
 
   const { matches: liveMatches } = useLiveMatches(selectedRound, selectedTeam)

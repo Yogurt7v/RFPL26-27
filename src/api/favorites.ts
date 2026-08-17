@@ -1,4 +1,12 @@
 import { supabase } from './supabase'
+import { cacheGet, cacheSet } from './cache'
+
+const FAVORITES_CACHE_KEY = 'favorites_overview'
+const FAVORITES_CACHE_TTL = 5 * 60 * 1000
+
+export function getCachedFavoritesOverview(): FavoritesOverview | null {
+  return cacheGet<FavoritesOverview>(FAVORITES_CACHE_KEY)
+}
 
 export interface FavoriteUser {
   username: string
@@ -9,6 +17,18 @@ export interface FavoriteRow {
   matchId: string
   username: string
   userId: string
+}
+
+export interface Starlet {
+  letter: string
+  username: string
+  userId: string
+}
+
+export interface FavoriteAgg {
+  matchId: string
+  count: number
+  starlets: Starlet[]
 }
 
 export async function addFavorite(userId: string, matchId: string): Promise<boolean> {
@@ -63,21 +83,32 @@ export async function getTotalUsersCount(): Promise<number> {
 }
 
 export interface FavoritesOverview {
-  favorites: FavoriteRow[]
+  favorites: FavoriteAgg[]
   totalUsers: number
 }
 
 export async function getFavoritesOverview(): Promise<FavoritesOverview> {
   const { data, error } = await supabase.rpc('get_favorites_overview')
-  if (error || !data) return { favorites: [], totalUsers: 0 }
+  if (error || !data?.length) return { favorites: [], totalUsers: 0 }
 
-  const rows = data as { match_id: string; username: string; user_id: string; total_users: number }[]
-  return {
-    favorites: rows.map(d => ({
-      matchId: d.match_id,
-      username: d.username,
-      userId: d.user_id,
+  const json = (data[0] as { result: {
+    favorites: { match_id: string; count: number; starlets: { username: string; userId: string }[] }[]
+    totalUsers: number
+  }}).result
+
+  const result: FavoritesOverview = {
+    favorites: (json.favorites ?? []).map(f => ({
+      matchId: f.match_id,
+      count: f.count,
+      starlets: (f.starlets ?? []).map(s => ({
+        letter: s.username.charAt(0).toUpperCase(),
+        username: s.username,
+        userId: s.userId,
+      })),
     })),
-    totalUsers: rows[0]?.total_users ?? 0,
+    totalUsers: json.totalUsers ?? 0,
   }
+
+  cacheSet(FAVORITES_CACHE_KEY, result, FAVORITES_CACHE_TTL)
+  return result
 }

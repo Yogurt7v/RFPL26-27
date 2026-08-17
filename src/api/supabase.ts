@@ -12,7 +12,7 @@ installPerfFetch(supabaseUrl)
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   db: {
-    timeout: 7000,
+    timeout: 60000,
   },
   global: {
     headers: {

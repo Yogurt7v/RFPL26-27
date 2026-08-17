@@ -1,5 +1,13 @@
 import { supabase } from './supabase'
 import { withRetry } from './retry'
+import { cacheGet, cacheSet } from './cache'
+
+const PREDICTED_KEYS_CACHE_TTL = 5 * 60 * 1000
+
+export function getCachedPredictedKeys(userId: string): Set<string> | undefined {
+  const arr = cacheGet<string[]>('predicted_keys_' + userId)
+  return arr ? new Set(arr) : undefined
+}
 
 function isNoRowsError(error: { code?: string } | null): boolean {
   return !!error && error.code === 'PGRST116'
@@ -243,9 +251,11 @@ export async function getUserPredictedMatchKeys(userId: string): Promise<Set<str
     logQueryError('getUserPredictedMatchKeys', error)
     return new Set()
   }
-  return new Set(
+  const keys = new Set(
     (data as any[]).map(d => `${d.matches.round}|${d.matches.home_team}|${d.matches.away_team}`)
   )
+  cacheSet('predicted_keys_' + userId, [...keys], PREDICTED_KEYS_CACHE_TTL)
+  return keys
 }
 
 export async function getMatchOtherPredictions(

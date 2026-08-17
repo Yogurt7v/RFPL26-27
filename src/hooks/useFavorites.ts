@@ -5,40 +5,11 @@ import {
   addFavorite,
   removeFavorite,
   getFavoritesOverview,
-  type FavoriteRow,
+  getCachedFavoritesOverview,
+  type FavoriteAgg,
   type FavoritesOverview,
+  type Starlet,
 } from '../api/favorites'
-
-interface Starlet {
-  letter: string
-  username: string
-  userId: string
-}
-
-function firstLetter(username: string): string {
-  return username.charAt(0).toUpperCase()
-}
-
-function buildFromRows(rows: FavoriteRow[]) {
-  const byMatch = new Map<string, Starlet[]>()
-  const counts = new Map<string, number>()
-
-  for (const row of rows) {
-    counts.set(row.matchId, (counts.get(row.matchId) ?? 0) + 1)
-  }
-
-  for (const row of rows) {
-    if (!byMatch.has(row.matchId)) {
-      byMatch.set(row.matchId, [])
-    }
-    const list = byMatch.get(row.matchId)!
-    if (list.length < 3) {
-      list.push({ letter: firstLetter(row.username), username: row.username, userId: row.userId })
-    }
-  }
-
-  return { byMatch, counts }
-}
 
 export function useFavorites() {
   const { user } = useAuth()
@@ -50,17 +21,29 @@ export function useFavorites() {
     queryFn: getFavoritesOverview,
     enabled: !!userId,
     staleTime: 60_000,
+    placeholderData: getCachedFavoritesOverview,
   })
 
-  const rows = overview?.favorites ?? []
   const totalUsers = overview?.totalUsers ?? 0
 
-  const userFavorites = useMemo(() =>
-    new Set(rows.filter(r => r.userId === userId).map(r => r.matchId)),
-    [rows, userId]
-  )
+  const byMatch = useMemo(() => {
+    const map = new Map<string, FavoriteAgg>()
+    for (const f of overview?.favorites ?? []) {
+      map.set(f.matchId, f)
+    }
+    return map
+  }, [overview])
 
-  const { byMatch, counts } = useMemo(() => buildFromRows(rows), [rows])
+  const userFavorites = useMemo(() => {
+    const set = new Set<string>()
+    if (!userId) return set
+    for (const f of overview?.favorites ?? []) {
+      if (f.starlets.some(s => s.userId === userId)) {
+        set.add(f.matchId)
+      }
+    }
+    return set
+  }, [overview, userId])
 
   const toggleMutation = useMutation({
     mutationFn: async ({ matchId, wasFav }: { matchId: string; wasFav: boolean }) => {
@@ -78,9 +61,23 @@ export function useFavorites() {
 
       queryClient.setQueryData<FavoritesOverview>(['favorites', 'overview'], old => {
         if (!old) return old
-        const favorites = wasFav
-          ? old.favorites.filter(r => !(r.matchId === matchId && r.userId === userId))
-          : [...old.favorites, { matchId, userId: userId!, username: user!.username }]
+        const favorites = old.favorites.map(f => {
+          if (f.matchId !== matchId) return f
+          if (wasFav) {
+            return { ...f, count: f.count - 1, starlets: f.starlets.filter(s => s.userId !== userId) }
+          }
+          const starlets: Starlet[] = f.starlets.length < 3
+            ? [...f.starlets, { letter: user!.username.charAt(0).toUpperCase(), username: user!.username, userId: userId! }]
+            : f.starlets
+          return { ...f, count: f.count + 1, starlets }
+        })
+        if (!wasFav && !favorites.some(f => f.matchId === matchId)) {
+          favorites.push({
+            matchId,
+            count: 1,
+            starlets: [{ letter: user!.username.charAt(0).toUpperCase(), username: user!.username, userId: userId! }],
+          })
+        }
         return { ...old, favorites }
       })
 
@@ -107,18 +104,18 @@ export function useFavorites() {
   }, [userFavorites, toggleMutation])
 
   const favoriteCount = useCallback(
-    (matchId: string) => counts.get(matchId) ?? 0,
-    [counts]
+    (matchId: string) => byMatch.get(matchId)?.count ?? 0,
+    [byMatch]
   )
 
   const starlets = useCallback(
-    (matchId: string) => (byMatch.get(matchId) ?? []).filter(s => s.userId !== userId),
+    (matchId: string): Starlet[] => (byMatch.get(matchId)?.starlets ?? []).filter(s => s.userId !== userId),
     [byMatch, userId]
   )
 
   const glowLevel = useCallback(
     (matchId: string): 0 | 1 | 2 | 3 => {
-      const count = counts.get(matchId) ?? 0
+      const count = byMatch.get(matchId)?.count ?? 0
       if (count === 0 || totalUsers === 0) return 0
       const ratio = count / totalUsers
       if (ratio >= 0.5) return 3
@@ -126,7 +123,7 @@ export function useFavorites() {
       if (ratio >= 0.1) return 1
       return 0
     },
-    [counts, totalUsers]
+    [byMatch, totalUsers]
   )
 
   return {
