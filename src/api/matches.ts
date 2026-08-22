@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { withRetry } from './retry'
 import { cacheGet, cacheSet } from './cache'
 
 const SCHEDULE_CACHE_KEY = 'schedule'
@@ -75,15 +76,16 @@ export function getCachedResults(): ResultEntry[] | undefined {
 }
 
 export async function getSchedule(): Promise<ScheduleEntry[]> {
-  const { data, error } = await supabase
-    .from('matches')
-    .select('id, round, home_team, away_team, match_date, stadium_name')
-    .order('round', { ascending: true })
-    .order('id', { ascending: true })
+  const { data, error } = await withRetry(() =>
+    supabase
+      .from('matches')
+      .select('id, round, home_team, away_team, match_date, stadium_name')
+      .order('round', { ascending: true })
+      .order('id', { ascending: true })
+  )
 
   if (error) {
-    console.error('Error fetching schedule:', error)
-    return []
+    throw new Error(`Error fetching schedule: ${error.message}`)
   }
 
   const schedule = (data as Record<string, unknown>[]).map(row => {
@@ -104,15 +106,16 @@ export async function getSchedule(): Promise<ScheduleEntry[]> {
 }
 
 export async function getResults(): Promise<ResultEntry[]> {
-  const { data, error } = await supabase
-    .from('matches')
-    .select('id, round, home_team, away_team, home_score, away_score, status')
-    .order('round', { ascending: true })
-    .order('id', { ascending: true })
+  const { data, error } = await withRetry(() =>
+    supabase
+      .from('matches')
+      .select('id, round, home_team, away_team, home_score, away_score, status')
+      .order('round', { ascending: true })
+      .order('id', { ascending: true })
+  )
 
   if (error) {
-    console.error('Error fetching results:', error)
-    return []
+    throw new Error(`Error fetching results: ${error.message}`)
   }
 
   const results = (data as Record<string, unknown>[]).map(row => ({
