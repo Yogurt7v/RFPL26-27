@@ -5,7 +5,7 @@ import { useLiveMatches } from '../hooks/useLiveMatches'
 import { useFavorites } from '../hooks/useFavorites'
 import { useAuth } from '../hooks/useAuth'
 import { useScrollToElement } from '../hooks/useScrollToElement'
-import { schedule, getMatchesByTeam, getNextMatch, getRoundByMatchId } from '../lib/schedule'
+import { schedule, getMatchesByTeam, getNextMatch, findNextMatch, getRoundByMatchId } from '../lib/schedule'
 import { teams } from '../lib/teams'
 import { formatDate, formatWeekday } from '../lib/format'
 import { MatchCard } from './MatchCard'
@@ -305,11 +305,5 @@ function getTeamMatches(teamName: string) {
 }
 
 function findNextMatchForTeam(teamName: string): string | undefined {
-  const now = new Date()
-  const teamSchedule = getMatchesByTeam(teamName)
-  for (const match of teamSchedule) {
-    const matchDate = new Date(`${match.date}T${match.time}:00+03:00`)
-    if (matchDate > now) return match.id
-  }
-  return undefined
+  return findNextMatch(getMatchesByTeam(teamName))?.id
 }

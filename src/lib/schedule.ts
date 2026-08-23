@@ -7,9 +7,14 @@ export interface ScheduleMatch {
   time: string
 }
 
+export const MATCH_DURATION_MS = 120 * 60 * 1000
+
+export function getMatchStartTime(match: ScheduleMatch): Date {
+  return new Date(`${match.date}T${match.time}:00+03:00`)
+}
+
 export function isMatchOpen(match: ScheduleMatch): boolean {
-  const matchStart = new Date(`${match.date}T${match.time}:00+03:00`)
-  return Date.now() < matchStart.getTime()
+  return Date.now() < getMatchStartTime(match).getTime()
 }
 
 export const schedule: ScheduleMatch[] = [
@@ -261,17 +266,13 @@ export const getMatchesByRound = (round: number): ScheduleMatch[] =>
 export const getMatchesByTeam = (teamName: string): ScheduleMatch[] =>
   schedule.filter(m => m.homeTeam === teamName || m.awayTeam === teamName)
 
+export function findNextMatch(matches: ScheduleMatch[]): ScheduleMatch | undefined {
+  const now = Date.now()
+  return matches.find(m => now < getMatchStartTime(m).getTime() + MATCH_DURATION_MS)
+}
+
 export function getNextMatch(): ScheduleMatch | undefined {
-  const now = new Date()
-
-  for (const match of schedule) {
-    const matchDate = new Date(`${match.date}T${match.time}:00+03:00`)
-    if (matchDate > now) {
-      return match
-    }
-  }
-
-  return undefined
+  return findNextMatch(schedule)
 }
 
 export function getRoundByMatchId(matchId: string): number | undefined {
