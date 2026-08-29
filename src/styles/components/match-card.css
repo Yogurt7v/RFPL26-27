@@ -161,7 +161,7 @@
   text-align: center;
   line-height: 1.2;
   color: var(--color-text);
-  word-break: break-word;
+  /*word-break: break-word;*/
 }
 
 .match-card__score {
