@@ -119,6 +119,35 @@
   padding: var(--spacing-md);
 }
 
+.check__skeleton-positions {
+  display: flex;
+  justify-content: space-around;
+  padding: var(--spacing-sm) var(--spacing-md);
+  gap: var(--spacing-md);
+}
+
+.check__skeleton-position {
+  height: 14px;
+  width: 60px;
+}
+
+.check__skeleton-form-dots {
+  display: flex;
+  justify-content: space-around;
+  padding: 0 var(--spacing-md) var(--spacing-sm);
+}
+
+.check__skeleton-dots-row {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.check__skeleton-dot {
+  width: 22px;
+  height: 18px;
+  border-radius: var(--radius-sm);
+}
+
 .check--saved {
   border-style: solid;
   border-color: var(--color-success);
@@ -209,6 +238,14 @@
   font-weight: 400;
   font-size: var(--font-size-sm);
   text-align: center;
+}
+
+.check__form-pos {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.02em;
+  margin-bottom: 2px;
 }
 
 .check__form-vs {
@@ -445,6 +482,13 @@
   font-size: var(--font-size-lg);
   font-weight: 300;
   color: var(--color-text-secondary);
+}
+
+.check__score-error {
+  color: var(--color-error);
+  font-size: var(--font-size-sm);
+  text-align: center;
+  margin-top: var(--spacing-sm);
 }
 
 /* Goals threshold rows */
@@ -689,6 +733,147 @@
 
 .check__winnings-value--negative {
   color: var(--color-error);
+}
+
+/* ── Saved teams block ─────────────────── */
+.check__saved-teams {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: start;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 1px dashed var(--color-border);
+}
+
+.check__saved-team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xs);
+  min-width: 0;
+}
+
+.check__saved-team-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-weight: 400;
+  font-size: var(--font-size-md);
+}
+
+.check__saved-team-name {
+  font-weight: 500;
+}
+
+.check__saved-vs {
+  font-weight: 300;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  align-self: center;
+}
+
+/* ── Saved prediction block ────────────── */
+.check__saved-prediction {
+  padding: var(--spacing-sm) var(--spacing-md);
+}
+
+.check__saved-prediction-title {
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: var(--spacing-sm);
+}
+
+.check__saved-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-xs) 0;
+}
+
+.check__saved-row + .check__saved-row {
+  border-top: 1px dotted var(--color-border);
+}
+
+.check__saved-label {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.check__saved-outcome {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-full);
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+.check__saved-outcome--correct {
+  color: var(--color-success);
+  border-color: var(--color-success);
+}
+
+.check__saved-outcome--wrong {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.check__saved-score {
+  font-weight: 600;
+  font-size: var(--font-size-md);
+  font-variant-numeric: tabular-nums;
+}
+
+.check__saved-score--correct {
+  color: var(--color-success);
+}
+
+.check__saved-thresholds {
+  display: flex;
+  gap: var(--spacing-xs);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.check__saved-threshold {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  /*color: var(--color-text-secondary);*/
+  white-space: nowrap;
+}
+
+/* ── Saved result ──────────────────────── */
+.check__saved-result {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+}
+
+.check__saved-result-label {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.check__saved-result-score {
+  font-weight: 600;
+  font-size: var(--font-size-lg);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
 }
 
 .check__others {

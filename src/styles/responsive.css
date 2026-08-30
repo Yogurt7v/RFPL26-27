@@ -28,6 +28,7 @@
   .layout__content {
     max-width: min(90%, 1400px);
     padding-bottom: calc(var(--bottom-nav-height) + var(--spacing-lg));
+    padding-top: calc(var(--bottom-nav-height));
   }
 
   .match-list__grid {

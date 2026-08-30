@@ -30,6 +30,8 @@ interface PredictionFormProps {
   awayForm?: TeamFormMatch[]
   homeFormLoading?: boolean
   awayFormLoading?: boolean
+  homePosition?: number
+  awayPosition?: number
 }
 
 const SCORE_OPTIONS = [0, 1, 2, 3, 4, 5]
@@ -51,6 +53,8 @@ export function PredictionForm({
   awayForm,
   homeFormLoading = false,
   awayFormLoading = false,
+  homePosition,
+  awayPosition,
 }: PredictionFormProps) {
   const [homeScore, setHomeScore] = useState<number | ''>(initialValues?.predictedHomeScore ?? '')
   const [awayScore, setAwayScore] = useState<number | ''>(initialValues?.predictedAwayScore ?? '')
@@ -116,6 +120,11 @@ export function PredictionForm({
 
   const hasScore = homeScore !== '' && awayScore !== ''
 
+  const scoreError =
+    (homeScore !== '' && awayScore === '') || (homeScore === '' && awayScore !== '')
+      ? 'Выберите счёт обеих команд'
+      : null
+
   const formatGoalsSummary = () => {
     const parts: string[] = []
     if (homeGoalsThreshold !== '') parts.push(`${homeTeam} ≥ ${homeGoalsThreshold}`)
@@ -125,87 +134,138 @@ export function PredictionForm({
 
   /* ─── Saved state ──────────────────────── */
   if (isSaved) {
+    const isOutcomeCorrect = isFinished && (
+      (outcome === '1' && actualHomeScore != null && actualHomeScore > (actualAwayScore ?? 0)) ||
+      (outcome === 'X' && actualHomeScore === actualAwayScore) ||
+      (outcome === '2' && actualAwayScore != null && actualAwayScore > (actualHomeScore ?? 0))
+    )
+    const isOutcomeWrong = isFinished && !isOutcomeCorrect && outcome != null
+
     return (
-      <><div className="check check--saved">
-        <div className="check__header check__header--success">
-          <span className="check__title">Прогноз принят</span>
-        </div>
-
-        <div className="check__saved-match">
-          {homeTeam}
-          <span className="check__score">
-            {actualHomeScore != null && actualAwayScore != null ? `${actualHomeScore} : ${actualAwayScore}` : ' : '}
-          </span>
-          {awayTeam}
-        </div>
-
-        <div className="check__divider" />
-
-        <div className="check__prediction-summary">
-          <div className="check__summary-row">
-            <span className="check__summary-label">Исход</span>
-            <span className={`check__summary-value ${isFinished ? (outcome === '1' && actualHomeScore != null && actualHomeScore > (actualAwayScore ?? 0) || outcome === 'X' && actualHomeScore === actualAwayScore || outcome === '2' && actualAwayScore != null && actualAwayScore > (actualHomeScore ?? 0) ? 'check__summary-correct' : 'check__summary-wrong') : ''}`}>
-              {outcome ? (outcome === '1' ? 'П1' : outcome === 'X' ? 'Ничья' : 'П2') : '—'}
-            </span>
+      <>
+        <div className="check check--saved">
+          <div className="check__header check__header--success">
+            <span className="check__title">Прогноз принят</span>
           </div>
-          <div className="check__summary-row">
-            <span className="check__summary-label">Точный счёт</span>
-            <span className={`check__summary-value ${isFinished && hasScore && actualHomeScore === homeScore && actualAwayScore === awayScore ? 'check__summary-correct' : ''}`}>
-              {hasScore ? `${homeScore}:${awayScore}` : '—'}
-            </span>
-          </div>
-          <div className="check__summary-row">
-            <span className="check__summary-label">Порог голов</span>
-            <span className="check__summary-value">
-              {formatGoalsSummary()}
-            </span>
-          </div>
-        </div>
 
-        {isFinished && points != null && points !== 0 && (
-          <>
-            <div className="check__divider" />
-            <div className={`check__winnings${points < 0 ? ' check__winnings--penalty' : ''}`}>
-              <div className="check__winnings-label">{points > 0 ? 'Выигрыш' : 'Штраф'}</div>
-              <div className={`check__winnings-value${points < 0 ? ' check__winnings-value--negative' : ''}`}>{points > 0 ? '+' : ''}{points} очков</div>
+          <div className="check__saved-teams">
+            <div className="check__saved-team">
+              <div className="check__saved-team-info">
+                {home && <img src={home.logo} alt="" className="check__logo" />}
+                <span className="check__saved-team-name">{homeTeam}</span>
+              </div>
+              {homePosition != null && (
+                <span className="check__form-pos">{homePosition}-е место</span>
+              )}
+              {homeForm !== undefined && homeForm.length > 0 && !homeFormLoading && (
+                <TeamForm teamName={homeTeam} results={homeForm} />
+              )}
             </div>
-          </>
-        )}
-
-        {onSaved && canEdit && (
-          <div className="check__footer">
-            <div className="check__footer-row">
-              <button type="button" className="check__submit check__submit--edit" onClick={() => setIsSaved(false)}>
-                Изменить прогноз
-              </button>
-              {onDelete && !isFinished && (
-                <button
-                  type="button"
-                  className="check__delete-btn"
-                  onClick={() => setShowDeleteModal(true)}
-                  aria-label="Удалить прогноз"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 6h18" />
-                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                    <line x1="10" y1="11" x2="10" y2="17" />
-                    <line x1="14" y1="11" x2="14" y2="17" />
-                  </svg>
-                </button>
+            <span className="check__saved-vs">vs</span>
+            <div className="check__saved-team">
+              <div className="check__saved-team-info">
+                {away && <img src={away.logo} alt="" className="check__logo" />}
+                <span className="check__saved-team-name">{awayTeam}</span>
+              </div>
+              {awayPosition != null && (
+                <span className="check__form-pos">{awayPosition}-е место</span>
+              )}
+              {awayForm !== undefined && awayForm.length > 0 && !awayFormLoading && (
+                <TeamForm teamName={awayTeam} results={awayForm} />
               )}
             </div>
           </div>
-        )}
-      </div>
 
-      <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="Удалить прогноз">
-        <p className="modal__text">Вы уверены, что хотите удалить прогноз на матч {homeTeam} — {awayTeam}?</p>
-        <div className="modal__actions">
-          <button type="button" className="btn btn--secondary" onClick={() => setShowDeleteModal(false)}>Отмена</button>
-          <button type="button" className="btn btn--primary btn--danger" onClick={() => { setShowDeleteModal(false); onDelete?.() }}>Удалить</button>
+          <div className="check__divider" />
+
+          <div className="check__saved-prediction">
+            <div className="check__saved-prediction-title">Мой прогноз</div>
+
+            <div className="check__saved-row">
+              <span className="check__saved-label">Исход</span>
+              <span className={`check__saved-outcome ${isOutcomeCorrect ? 'check__saved-outcome--correct' : ''}${isOutcomeWrong ? ' check__saved-outcome--wrong' : ''}`}>
+                {outcome ? (outcome === '1' ? `Победа ${homeTeam}` : outcome === 'X' ? 'Ничья' : `Победа ${awayTeam}`) : '—'}
+              </span>
+            </div>
+
+            <div className="check__saved-row">
+              <span className="check__saved-label">Точный счёт</span>
+              <span className={`check__saved-score ${isFinished && hasScore && actualHomeScore === homeScore && actualAwayScore === awayScore ? 'check__saved-score--correct' : ''}`}>
+                {hasScore ? `${homeScore} : ${awayScore}` : '—'}
+              </span>
+            </div>
+
+            <div className="check__saved-row">
+              <span className="check__saved-label">Порог голов</span>
+              <div className="check__saved-thresholds">
+                {homeGoalsThreshold !== '' && (
+                  <span className="check__saved-threshold">{homeTeam} ≥ {homeGoalsThreshold} голов</span>
+                )}
+                {awayGoalsThreshold !== '' && (
+                  <span className="check__saved-threshold">{awayTeam} ≥ {awayGoalsThreshold} голов</span>
+                )}
+                {homeGoalsThreshold === '' && awayGoalsThreshold === '' && (
+                  <span className="check__saved-score">—</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {isFinished && actualHomeScore != null && actualAwayScore != null && (
+            <>
+              <div className="check__divider" />
+              <div className="check__saved-result">
+                <span className="check__saved-result-label">Результат</span>
+                <span className="check__saved-result-score">{actualHomeScore} : {actualAwayScore}</span>
+              </div>
+            </>
+          )}
+
+          {isFinished && points != null && points !== 0 && (
+            <>
+              <div className="check__divider" />
+              <div className={`check__winnings${points < 0 ? ' check__winnings--penalty' : ''}`}>
+                <div className="check__winnings-label">{points > 0 ? 'Выигрыш' : 'Штраф'}</div>
+                <div className={`check__winnings-value${points < 0 ? ' check__winnings-value--negative' : ''}`}>{points > 0 ? '+' : ''}{points} очков</div>
+              </div>
+            </>
+          )}
+
+          {onSaved && canEdit && (
+            <div className="check__footer">
+              <div className="check__footer-row">
+                <button type="button" className="check__submit check__submit--edit" onClick={() => setIsSaved(false)}>
+                  Изменить прогноз
+                </button>
+                {onDelete && !isFinished && (
+                  <button
+                    type="button"
+                    className="check__delete-btn"
+                    onClick={() => setShowDeleteModal(true)}
+                    aria-label="Удалить прогноз"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 6h18" />
+                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                      <line x1="10" y1="11" x2="10" y2="17" />
+                      <line x1="14" y1="11" x2="14" y2="17" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-      </Modal></>
+
+        <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="Удалить прогноз">
+          <p className="modal__text">Вы уверены, что хотите удалить прогноз на матч {homeTeam} — {awayTeam}?</p>
+          <div className="modal__actions">
+            <button type="button" className="btn btn--secondary" onClick={() => setShowDeleteModal(false)}>Отмена</button>
+            <button type="button" className="btn btn--primary btn--danger" onClick={() => { setShowDeleteModal(false); onDelete?.() }}>Удалить</button>
+          </div>
+        </Modal>
+      </>
     )
   }
 
@@ -233,12 +293,16 @@ export function PredictionForm({
       {homeForm !== undefined && awayForm !== undefined && !homeFormLoading && !awayFormLoading && (
         <div className="check__form-block">
           <div className="check__form-side">
-            {/*<span className="check__form-team">{homeTeam}</span>*/}
+            {homePosition != null && (
+              <span className="check__form-pos">{homePosition}-е место</span>
+            )}
             <TeamForm teamName={homeTeam} results={homeForm} />
           </div>
           <span className="check__form-vs"></span>
           <div className="check__form-side">
-            {/*<span className="check__form-team">{awayTeam}</span>*/}
+            {awayPosition != null && (
+              <span className="check__form-pos">{awayPosition}-е место</span>
+            )}
             <TeamForm teamName={awayTeam} results={awayForm} />
           </div>
         </div>
@@ -275,15 +339,16 @@ export function PredictionForm({
           <div className="check__section-label">Точный счёт</div>
           <div className="check__score-selects">
             <select value={homeScore} onChange={e => setHomeScore(e.target.value === '' ? '' : parseInt(e.target.value))} className="check__score-select">
-              <option value="" disabled>—</option>
+              <option value="">—</option>
               {SCORE_OPTIONS.map(n => <option key={n} value={n}>{n}</option>)}
             </select>
             <span className="check__score-sep">:</span>
             <select value={awayScore} onChange={e => setAwayScore(e.target.value === '' ? '' : parseInt(e.target.value))} className="check__score-select">
-              <option value="" disabled>—</option>
+              <option value="">—</option>
               {SCORE_OPTIONS.map(n => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
+          {scoreError && <div className="check__score-error">{scoreError}</div>}
         </div>
 
         {/* Goals threshold */}
@@ -314,7 +379,7 @@ export function PredictionForm({
 
       <div className="check__footer">
         <div className="check__tear-line" />
-        <button type="button" className="check__submit" onClick={handleSubmit} disabled={isSubmitting}>
+        <button type="button" className="check__submit" onClick={handleSubmit} disabled={isSubmitting || !!scoreError}>
           {isSubmitting ? 'Сохранение...' : 'Сделать прогноз'}
         </button>
       </div>

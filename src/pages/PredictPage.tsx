@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PredictionForm, type PredictionFormData } from '../components/PredictionForm'
 import { savePrediction, deletePrediction, getPredictionForMatch, findMatchId, getMatchOtherPredictions, type OtherPrediction, type SaveResult } from '../api/predictions'
 import { getResults, getCachedResults } from '../api/matches'
+import { getStandings } from '../api/standings'
 import { getTeamLastResults } from '../lib/form'
 import { schedule, isMatchOpen } from '../lib/schedule'
 import { useAuth } from '../hooks/useAuth'
@@ -54,6 +55,15 @@ export function PredictPage() {
     staleTime: 15 * 60 * 1000,
     placeholderData: getCachedResults,
   })
+
+  const { data: standings = [] } = useQuery({
+    queryKey: ['standings'],
+    queryFn: getStandings,
+    staleTime: 5 * 60_000,
+  })
+
+  const homePosition = standings.find(s => s.teamName === match?.homeTeam)?.position
+  const awayPosition = standings.find(s => s.teamName === match?.awayTeam)?.position
 
   const matchScores = useMemo(() => {
     if (!match) return undefined
@@ -129,19 +139,40 @@ export function PredictPage() {
           <div className="check__header">
             <div className="skeleton" />
           </div>
-            <div className="check__match">
-              <div className="check__teams">
-                <div className="check__team">
-                  <div className="skeleton check__skeleton-logo" />
-                  <div className="skeleton check__skeleton-team-name" />
-                </div>
-                <span className="check__vs">vs</span>
-                <div className="check__team check__team--right">
-                  <div className="skeleton check__skeleton-team-name" />
-                  <div className="skeleton check__skeleton-logo" />
-                </div>
+          <div className="check__match">
+            <div className="check__teams">
+              <div className="check__team">
+                <div className="skeleton check__skeleton-logo" />
+                <div className="skeleton check__skeleton-team-name" />
+              </div>
+              <span className="check__vs">vs</span>
+              <div className="check__team check__team--right">
+                <div className="skeleton check__skeleton-team-name" />
+                <div className="skeleton check__skeleton-logo" />
               </div>
             </div>
+          </div>
+          <div className="check__skeleton-positions">
+            <div className="skeleton check__skeleton-position" />
+            <div className="skeleton check__skeleton-position" />
+          </div>
+          <div className="check__skeleton-form-dots">
+            <div className="check__skeleton-dots-row">
+              <div className="skeleton check__skeleton-dot" />
+              <div className="skeleton check__skeleton-dot" />
+              <div className="skeleton check__skeleton-dot" />
+              <div className="skeleton check__skeleton-dot" />
+              <div className="skeleton check__skeleton-dot" />
+            </div>
+            <div className="check__skeleton-dots-row">
+              <div className="skeleton check__skeleton-dot" />
+              <div className="skeleton check__skeleton-dot" />
+              <div className="skeleton check__skeleton-dot" />
+              <div className="skeleton check__skeleton-dot" />
+              <div className="skeleton check__skeleton-dot" />
+            </div>
+          </div>
+          <div className="check__divider" />
           <div className="check__sections">
             <div className="check__section">
               <div className="check__section-label"><div className="skeleton" /></div>
@@ -206,6 +237,12 @@ export function PredictPage() {
               actualAwayScore={scores?.away ?? null}
               points={existingPrediction?.pointsEarned ?? null}
               onDelete={deleteMutation.mutate}
+              homeForm={homeForm}
+              awayForm={awayForm}
+              homeFormLoading={isLoadingResults}
+              awayFormLoading={isLoadingResults}
+              homePosition={homePosition}
+              awayPosition={awayPosition}
             />
           </>
         ) : (
@@ -285,6 +322,8 @@ export function PredictPage() {
         awayForm={awayForm}
         homeFormLoading={isLoadingResults}
         awayFormLoading={isLoadingResults}
+        homePosition={homePosition}
+        awayPosition={awayPosition}
       />
       {otherCount > 0 && (
         <div className="predict-others">
