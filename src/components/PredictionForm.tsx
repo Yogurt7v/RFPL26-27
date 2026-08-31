@@ -141,6 +141,11 @@ export function PredictionForm({
     )
     const isOutcomeWrong = isFinished && !isOutcomeCorrect && outcome != null
 
+    const isHomeThresholdCorrect = isFinished && homeGoalsThreshold !== '' && actualHomeScore != null && actualHomeScore >= homeGoalsThreshold
+    const isHomeThresholdWrong = isFinished && homeGoalsThreshold !== '' && !isHomeThresholdCorrect
+    const isAwayThresholdCorrect = isFinished && awayGoalsThreshold !== '' && actualAwayScore != null && actualAwayScore >= awayGoalsThreshold
+    const isAwayThresholdWrong = isFinished && awayGoalsThreshold !== '' && !isAwayThresholdCorrect
+
     return (
       <>
         <div className="check check--saved">
@@ -149,32 +154,46 @@ export function PredictionForm({
           </div>
 
           <div className="check__saved-teams">
-            <div className="check__saved-team">
-              <div className="check__saved-team-info">
-                {home && <img src={home.logo} alt="" className="check__logo" />}
-                <span className="check__saved-team-name">{homeTeam}</span>
-              </div>
-              {homePosition != null && (
-                <span className="check__form-pos">{homePosition}-е место</span>
-              )}
-              {homeForm !== undefined && homeForm.length > 0 && !homeFormLoading && (
-                <TeamForm teamName={homeTeam} results={homeForm} />
-              )}
+            <div className="check__saved-team-info">
+              {home && <img src={home.logo} alt="" className="check__logo" />}
+              <span className="check__saved-team-name">{homeTeam}</span>
             </div>
-            <span className="check__saved-vs">vs</span>
-            <div className="check__saved-team">
-              <div className="check__saved-team-info">
-                {away && <img src={away.logo} alt="" className="check__logo" />}
-                <span className="check__saved-team-name">{awayTeam}</span>
-              </div>
-              {awayPosition != null && (
-                <span className="check__form-pos">{awayPosition}-е место</span>
-              )}
-              {awayForm !== undefined && awayForm.length > 0 && !awayFormLoading && (
-                <TeamForm teamName={awayTeam} results={awayForm} />
-              )}
+            <span className="check__saved-vs"></span>
+            <div className="check__saved-team-info">
+              {away && <img src={away.logo} alt="" className="check__logo" />}
+              <span className="check__saved-team-name">{awayTeam}</span>
             </div>
+
+            <span className="check__form-pos">
+              {homePosition != null ? `${homePosition}-е место` : '\u00A0'}
+            </span>
+            <span />
+            <span className="check__form-pos">
+              {awayPosition != null ? `${awayPosition}-е место` : '\u00A0'}
+            </span>
+
+            {homeForm !== undefined && homeForm.length > 0 && !homeFormLoading ? (
+              <TeamForm teamName={homeTeam} results={homeForm} />
+            ) : (
+              <span />
+            )}
+            <span />
+            {awayForm !== undefined && awayForm.length > 0 && !awayFormLoading ? (
+              <TeamForm teamName={awayTeam} results={awayForm} />
+            ) : (
+              <span />
+            )}
           </div>
+
+          {isFinished && actualHomeScore != null && actualAwayScore != null && (
+            <>
+              <div className="check__divider" />
+              <div className="check__saved-result">
+                <span className="check__saved-result-label">Результат</span>
+                <span className="check__saved-result-score">{actualHomeScore} : {actualAwayScore}</span>
+              </div>
+            </>
+          )}
 
           <div className="check__divider" />
 
@@ -199,10 +218,10 @@ export function PredictionForm({
               <span className="check__saved-label">Порог голов</span>
               <div className="check__saved-thresholds">
                 {homeGoalsThreshold !== '' && (
-                  <span className="check__saved-threshold">{homeTeam} ≥ {homeGoalsThreshold} голов</span>
+                  <span className={`check__saved-threshold${isHomeThresholdCorrect ? ' check__saved-threshold--correct' : ''}${isHomeThresholdWrong ? ' check__saved-threshold--wrong' : ''}`}>{homeTeam} ≥ {homeGoalsThreshold} голов</span>
                 )}
                 {awayGoalsThreshold !== '' && (
-                  <span className="check__saved-threshold">{awayTeam} ≥ {awayGoalsThreshold} голов</span>
+                  <span className={`check__saved-threshold${isAwayThresholdCorrect ? ' check__saved-threshold--correct' : ''}${isAwayThresholdWrong ? ' check__saved-threshold--wrong' : ''}`}>{awayTeam} ≥ {awayGoalsThreshold} голов</span>
                 )}
                 {homeGoalsThreshold === '' && awayGoalsThreshold === '' && (
                   <span className="check__saved-score">—</span>
@@ -210,16 +229,6 @@ export function PredictionForm({
               </div>
             </div>
           </div>
-
-          {isFinished && actualHomeScore != null && actualAwayScore != null && (
-            <>
-              <div className="check__divider" />
-              <div className="check__saved-result">
-                <span className="check__saved-result-label">Результат</span>
-                <span className="check__saved-result-score">{actualHomeScore} : {actualAwayScore}</span>
-              </div>
-            </>
-          )}
 
           {isFinished && points != null && points !== 0 && (
             <>

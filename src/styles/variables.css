@@ -15,6 +15,9 @@
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
 
+  /* Шрифт счёта */
+  --font-score: 'Oswald', sans-serif;
+
   /* Палитра РПЛ */
   --color-primary: #1A72B5;
   --color-primary-hover: #155D94;
