@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { PredictionForm, type PredictionFormData } from '../components/PredictionForm'
-import { savePrediction, deletePrediction, getPredictionForMatch, findMatchId, getMatchOtherPredictions, type OtherPrediction, type SaveResult } from '../api/predictions'
+import { savePrediction, deletePrediction, getPredictionForMatch, findMatchId, getMatchOtherPredictions, getCachedMatchOtherPredictions, type OtherPrediction, type SaveResult } from '../api/predictions'
 import { getResults, getCachedResults } from '../api/matches'
 import { getCachedPredictionDetail } from '../api/predictions'
 import { getStandings } from '../api/standings'
@@ -50,6 +50,10 @@ export function PredictPage() {
     queryFn: () => getMatchOtherPredictions(resolvedMatchId!, user!.id),
     enabled: !!resolvedMatchId && !!user,
     staleTime: 30_000,
+    initialData: (resolvedMatchId && user)
+      ? () => getCachedMatchOtherPredictions(resolvedMatchId, user.id) ?? undefined
+      : undefined,
+    placeholderData: keepPreviousData,
   })
 
   const { data: allResults = [], isLoading: isLoadingResults } = useQuery({
@@ -214,6 +218,12 @@ export function PredictPage() {
             <div className="skeleton check__skeleton-submit" />
           </div>
         </div>
+        <button
+          className="btn btn--secondary predict-page__back"
+          onClick={goBack}
+        >
+          Назад к матчам
+        </button>
       </div>
     )
   }
@@ -306,13 +316,6 @@ export function PredictPage() {
               ))}
             </div>
           )}
-
-          <button
-            className="btn btn--secondary predict-page__back"
-            onClick={goBack}
-          >
-           Назад к матчам
-         </button>
       </div>
     )
   }

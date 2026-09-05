@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { getUserPredictions, type UserPrediction } from '../api/predictions'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
+import { getUserPredictions, getCachedUserPredictions, type UserPrediction } from '../api/predictions'
 import { getTeamByName } from '../lib/teams'
 import { formatScore, formatDate } from '../lib/format'
 import { GlassCard } from './GlassCard'
@@ -36,6 +36,8 @@ export function PredictionResults({ userId }: PredictionResultsProps) {
     queryKey: ['predictions', userId],
     queryFn: () => getUserPredictions(userId),
     staleTime: 30_000,
+    initialData: () => getCachedUserPredictions(userId),
+    placeholderData: keepPreviousData,
   })
 
   if (isLoading) {

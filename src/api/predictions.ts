@@ -4,6 +4,8 @@ import { cacheGet, cacheSet } from './cache'
 
 const PREDICTED_KEYS_CACHE_TTL = 24 * 60 * 60 * 1000
 const PREDICTION_DETAIL_CACHE_TTL = 24 * 60 * 60 * 1000
+const OTHER_PREDICTIONS_CACHE_TTL = 24 * 60 * 60 * 1000
+const USER_PREDICTIONS_CACHE_TTL = 24 * 60 * 60 * 1000
 
 export function getCachedPredictedKeys(userId: string): Set<string> | undefined {
   const arr = cacheGet<string[]>('predicted_keys_' + userId)
@@ -18,6 +20,20 @@ export function getCachedPredictionDetail(
   userId: string, round: number, homeTeam: string, awayTeam: string
 ): PredictionData | null {
   return cacheGet<PredictionData>(predictionDetailCacheKey(userId, round, homeTeam, awayTeam))
+}
+
+function otherPredictionsCacheKey(matchId: number, userId: string): string {
+  return `other_predictions:${matchId}:${userId}`
+}
+
+export function getCachedMatchOtherPredictions(
+  matchId: number, userId: string
+): MatchPredictionsInfo | undefined {
+  return cacheGet<MatchPredictionsInfo>(otherPredictionsCacheKey(matchId, userId)) ?? undefined
+}
+
+export function getCachedUserPredictions(userId: string): UserPrediction[] | undefined {
+  return cacheGet<UserPrediction[]>('user_predictions_' + userId) ?? undefined
 }
 
 function isNoRowsError(error: { code?: string } | null): boolean {
@@ -216,7 +232,7 @@ export async function getUserPredictions(userId: string): Promise<UserPrediction
     return []
   }
 
-  return data.map((row: Record<string, unknown>) => {
+  const result = data.map((row: Record<string, unknown>) => {
     const match = row.matches as Record<string, unknown> | null
     return {
       id: row.id as number,
@@ -235,6 +251,9 @@ export async function getUserPredictions(userId: string): Promise<UserPrediction
       pointsEarned: (row.points_earned as number) || 0,
     }
   })
+
+  cacheSet('user_predictions_' + userId, result, USER_PREDICTIONS_CACHE_TTL)
+  return result
 }
 
 export interface OtherPrediction {
@@ -309,9 +328,12 @@ export async function getMatchOtherPredictions(
     }
   })
 
-  return {
+  const result: MatchPredictionsInfo = {
     count: predictions.length,
     usernames: predictions.map(p => p.username),
     predictions,
   }
+
+  cacheSet(otherPredictionsCacheKey(matchId, currentUserId), result, OTHER_PREDICTIONS_CACHE_TTL)
+  return result
 }

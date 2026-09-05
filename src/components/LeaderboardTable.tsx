@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query'
-import { getLeaderboard, type LeaderboardEntry } from '../api/leaderboard'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
+import { getLeaderboard, getCachedLeaderboard, type LeaderboardEntry } from '../api/leaderboard'
 
 interface LeaderboardTableProps {
   currentUserId?: string
@@ -10,6 +10,8 @@ export function LeaderboardTable({ currentUserId }: LeaderboardTableProps) {
     queryKey: ['leaderboard'],
     queryFn: getLeaderboard,
     staleTime: 5 * 60_000,
+    initialData: getCachedLeaderboard,
+    placeholderData: keepPreviousData,
   })
 
   if (isLoading) {

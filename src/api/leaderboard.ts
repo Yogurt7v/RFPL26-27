@@ -1,4 +1,7 @@
 import { supabase } from './supabase'
+import { cacheGet, cacheSet } from './cache'
+
+const LEADERBOARD_CACHE_TTL = 24 * 60 * 60 * 1000
 
 export interface LeaderboardEntry {
   id: string
@@ -22,6 +25,10 @@ function mapRows(rows: Record<string, unknown>[]): LeaderboardEntry[] {
   }))
 }
 
+export function getCachedLeaderboard(): LeaderboardEntry[] | undefined {
+  return cacheGet<LeaderboardEntry[]>('leaderboard') ?? undefined
+}
+
 export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
   const { data, error } = await supabase
     .from('leaderboard')
@@ -33,5 +40,7 @@ export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
     return []
   }
 
-  return mapRows(data as Record<string, unknown>[])
+  const result = mapRows(data as Record<string, unknown>[])
+  cacheSet('leaderboard', result, LEADERBOARD_CACHE_TTL)
+  return result
 }
