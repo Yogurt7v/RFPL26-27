@@ -36,6 +36,17 @@ export function cacheSet(key: string, value: unknown, ttlMs: number = DEFAULT_TT
   }
 }
 
+export function cacheGetStale<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(PREFIX + key)
+    if (!raw) return null
+    const entry = JSON.parse(raw) as CacheEntry<T>
+    return entry.value
+  } catch {
+    return null
+  }
+}
+
 export function cacheRemove(key: string): void {
   try {
     localStorage.removeItem(PREFIX + key)

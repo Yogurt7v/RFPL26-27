@@ -1,11 +1,11 @@
 import { supabase } from './supabase'
 import { withRetry } from './retry'
-import { cacheGet, cacheSet } from './cache'
+import { cacheGet, cacheGetStale, cacheSet } from './cache'
 
 const SCHEDULE_CACHE_KEY = 'schedule'
 const SCHEDULE_CACHE_TTL = 24 * 60 * 60 * 1000
 const RESULTS_CACHE_KEY = 'results'
-const RESULTS_CACHE_TTL = 24 * 60 * 60 * 1000
+const RESULTS_CACHE_TTL = 15 * 60 * 1000
 
 export interface Match {
   id: string
@@ -106,28 +106,34 @@ export async function getSchedule(): Promise<ScheduleEntry[]> {
 }
 
 export async function getResults(): Promise<ResultEntry[]> {
-  const { data, error } = await withRetry(() =>
-    supabase
-      .from('matches')
-      .select('id, round, home_team, away_team, home_score, away_score, status')
-      .order('round', { ascending: true })
-      .order('id', { ascending: true })
-  )
+  try {
+    const { data, error } = await withRetry(() =>
+      supabase
+        .from('matches')
+        .select('id, round, home_team, away_team, home_score, away_score, status')
+        .order('round', { ascending: true })
+        .order('id', { ascending: true })
+    )
 
-  if (error) {
-    throw new Error(`Error fetching results: ${error.message}`)
+    if (error) {
+      throw new Error(`Error fetching results: ${error.message}`)
+    }
+
+    const results = (data as Record<string, unknown>[]).map(row => ({
+      id: String(row.id as number),
+      round: row.round as number,
+      homeTeam: row.home_team as string,
+      awayTeam: row.away_team as string,
+      homeScore: (row.home_score as number) ?? null,
+      awayScore: (row.away_score as number) ?? null,
+      status: (row.status as Match['status']) || 'SCHEDULED',
+    }))
+
+    cacheSet(RESULTS_CACHE_KEY, results, RESULTS_CACHE_TTL)
+    return results
+  } catch {
+    const stale = cacheGetStale<ResultEntry[]>(RESULTS_CACHE_KEY)
+    if (stale) return stale
+    throw new Error('Error fetching results: network error and no cached data')
   }
-
-  const results = (data as Record<string, unknown>[]).map(row => ({
-    id: String(row.id as number),
-    round: row.round as number,
-    homeTeam: row.home_team as string,
-    awayTeam: row.away_team as string,
-    homeScore: (row.home_score as number) ?? null,
-    awayScore: (row.away_score as number) ?? null,
-    status: (row.status as Match['status']) || 'SCHEDULED',
-  }))
-
-  cacheSet(RESULTS_CACHE_KEY, results, RESULTS_CACHE_TTL)
-  return results
 }

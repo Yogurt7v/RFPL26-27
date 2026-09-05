@@ -24,7 +24,11 @@ export function useLiveMatches(
     queryKey: ['matches', 'results'],
     queryFn: getResults,
     staleTime: 15 * 60 * 1000,
-    refetchInterval: 15 * 60 * 1000,
+    gcTime: 2 * 60 * 60 * 1000,
+    refetchInterval: (query) => {
+      if (query.state.error) return 2 * 60 * 1000
+      return 15 * 60 * 1000
+    },
     initialData: getCachedResults,
     placeholderData: keepPreviousData,
   })
