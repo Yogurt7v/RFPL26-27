@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import {
   getCachedResults,
   getCachedSchedule,
@@ -16,7 +16,8 @@ export function useLiveMatches(
     queryKey: ['matches', 'schedule'],
     queryFn: getSchedule,
     staleTime: 24 * 60 * 60 * 1000,
-    placeholderData: getCachedSchedule,
+    initialData: getCachedSchedule,
+    placeholderData: keepPreviousData,
   })
 
   const resultsQuery = useQuery({
@@ -24,7 +25,8 @@ export function useLiveMatches(
     queryFn: getResults,
     staleTime: 15 * 60 * 1000,
     refetchInterval: 15 * 60 * 1000,
-    placeholderData: getCachedResults,
+    initialData: getCachedResults,
+    placeholderData: keepPreviousData,
   })
 
   const matches = useMemo<Match[]>(() => {

@@ -2,7 +2,7 @@ import { supabase } from './supabase'
 import { cacheGet, cacheSet } from './cache'
 
 const FAVORITES_CACHE_KEY = 'favorites_overview'
-const FAVORITES_CACHE_TTL = 5 * 60 * 1000
+const FAVORITES_CACHE_TTL = 24 * 60 * 60 * 1000
 
 export function getCachedFavoritesOverview(): FavoritesOverview | null {
   return cacheGet<FavoritesOverview>(FAVORITES_CACHE_KEY)

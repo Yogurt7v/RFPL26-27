@@ -2,11 +2,22 @@ import { supabase } from './supabase'
 import { withRetry } from './retry'
 import { cacheGet, cacheSet } from './cache'
 
-const PREDICTED_KEYS_CACHE_TTL = 5 * 60 * 1000
+const PREDICTED_KEYS_CACHE_TTL = 24 * 60 * 60 * 1000
+const PREDICTION_DETAIL_CACHE_TTL = 24 * 60 * 60 * 1000
 
 export function getCachedPredictedKeys(userId: string): Set<string> | undefined {
   const arr = cacheGet<string[]>('predicted_keys_' + userId)
   return arr ? new Set(arr) : undefined
+}
+
+function predictionDetailCacheKey(userId: string, round: number, homeTeam: string, awayTeam: string): string {
+  return `prediction_detail:${userId}:${round}:${homeTeam}:${awayTeam}`
+}
+
+export function getCachedPredictionDetail(
+  userId: string, round: number, homeTeam: string, awayTeam: string
+): PredictionData | null {
+  return cacheGet<PredictionData>(predictionDetailCacheKey(userId, round, homeTeam, awayTeam))
 }
 
 function isNoRowsError(error: { code?: string } | null): boolean {
@@ -77,7 +88,7 @@ export async function getPredictionForMatch(
 
   const match = data.matches as Record<string, unknown> | null
 
-  return {
+  const result: PredictionData = {
     matchId: match?.id as number | undefined,
     predictedHomeScore: data.predicted_home_score as number | null,
     predictedAwayScore: data.predicted_away_score as number | null,
@@ -88,6 +99,9 @@ export async function getPredictionForMatch(
     actualAwayScore: (match?.away_score as number) ?? null,
     pointsEarned: (data.points_earned as number) || 0,
   }
+
+  cacheSet(predictionDetailCacheKey(userId, round, homeTeam, awayTeam), result, PREDICTION_DETAIL_CACHE_TTL)
+  return result
 }
 
 export async function findMatchId(homeTeam: string, awayTeam: string, round: number): Promise<number | null> {

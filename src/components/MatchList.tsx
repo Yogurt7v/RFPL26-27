@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { useLiveMatches } from '../hooks/useLiveMatches'
 import { useFavorites } from '../hooks/useFavorites'
 import { useAuth } from '../hooks/useAuth'
@@ -86,7 +86,8 @@ export function MatchList({ onPredict }: MatchListProps) {
     queryFn: () => getUserPredictedMatchKeys(user!.id),
     enabled: !!user?.id,
     staleTime: 60_000,
-    placeholderData: user?.id ? () => getCachedPredictedKeys(user.id) : undefined,
+    initialData: user?.id ? () => getCachedPredictedKeys(user.id) : undefined,
+    placeholderData: keepPreviousData,
   })
 
   const { matches: liveMatches } = useLiveMatches(selectedRound, selectedTeam)

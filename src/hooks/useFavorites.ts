@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { useAuth } from './useAuth'
 import {
   addFavorite,
@@ -21,7 +21,8 @@ export function useFavorites() {
     queryFn: getFavoritesOverview,
     enabled: !!userId,
     staleTime: 60_000,
-    placeholderData: getCachedFavoritesOverview,
+    placeholderData: keepPreviousData,
+    initialData: getCachedFavoritesOverview,
   })
 
   const totalUsers = overview?.totalUsers ?? 0

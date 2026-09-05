@@ -5,7 +5,7 @@ import { cacheGet, cacheSet } from './cache'
 const SCHEDULE_CACHE_KEY = 'schedule'
 const SCHEDULE_CACHE_TTL = 24 * 60 * 60 * 1000
 const RESULTS_CACHE_KEY = 'results'
-const RESULTS_CACHE_TTL = 15 * 60 * 1000
+const RESULTS_CACHE_TTL = 24 * 60 * 60 * 1000
 
 export interface Match {
   id: string

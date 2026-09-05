@@ -337,6 +337,9 @@
 .predict-page__back {
   margin-top: 12px;
   width: 100%;
+  padding: 14px 20px;
+  font-size: 16px;
+  box-shadow: 0 2px 0 var(--color-border), 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 @media (min-width: 768px) {

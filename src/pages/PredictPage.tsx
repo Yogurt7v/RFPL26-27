@@ -1,9 +1,10 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useMemo } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { PredictionForm, type PredictionFormData } from '../components/PredictionForm'
 import { savePrediction, deletePrediction, getPredictionForMatch, findMatchId, getMatchOtherPredictions, type OtherPrediction, type SaveResult } from '../api/predictions'
 import { getResults, getCachedResults } from '../api/matches'
+import { getCachedPredictionDetail } from '../api/predictions'
 import { getStandings } from '../api/standings'
 import { getTeamLastResults } from '../lib/form'
 import { schedule, isMatchOpen } from '../lib/schedule'
@@ -31,6 +32,8 @@ export function PredictPage() {
     queryFn: () => getPredictionForMatch(user!.id, match!.homeTeam, match!.awayTeam, match!.round),
     enabled: !!user && !!match,
     staleTime: 30_000,
+    initialData: (user && match) ? () => getCachedPredictionDetail(user.id, match.round, match.homeTeam, match.awayTeam) ?? undefined : undefined,
+    placeholderData: keepPreviousData,
   })
 
   const { data: matchDbId } = useQuery({
@@ -53,7 +56,8 @@ export function PredictPage() {
     queryKey: ['matches', 'results'],
     queryFn: getResults,
     staleTime: 15 * 60 * 1000,
-    placeholderData: getCachedResults,
+    initialData: getCachedResults,
+    placeholderData: keepPreviousData,
   })
 
   const { data: standings = [] } = useQuery({
@@ -257,7 +261,14 @@ export function PredictPage() {
             </div>
             <p className="predict-missed__text">Вы не сделали прогноз на этот матч.</p>
           </div>
-        )}
+         )}
+
+          <button
+            className="btn btn--secondary predict-page__back"
+            onClick={goBack}
+          >
+           Назад к матчам
+         </button>
 
          {otherCount > 0 && !finished && (
            <div className="predict-others">
@@ -325,18 +336,18 @@ export function PredictPage() {
         homePosition={homePosition}
         awayPosition={awayPosition}
       />
-      {otherCount > 0 && (
-        <div className="predict-others">
-          <span className="predict-others__dot" />
-          <span>{otherNames.join(', ')} {otherCount === 1 ? 'сделал' : 'сделали'} прогноз</span>
-        </div>
-      )}
       <button
         className="btn btn--secondary predict-page__back"
         onClick={goBack}
       >
         Назад к матчам
       </button>
+      {otherCount > 0 && (
+        <div className="predict-others">
+          <span className="predict-others__dot" />
+          <span>{otherNames.join(', ')} {otherCount === 1 ? 'сделал' : 'сделали'} прогноз</span>
+        </div>
+      )}
     </div>
   )
 }
