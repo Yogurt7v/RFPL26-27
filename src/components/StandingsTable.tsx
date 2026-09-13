@@ -1,12 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
-import { getStandings, type Standing } from '../api/standings'
+import { getStandings, getCachedStandings, type Standing } from '../api/standings'
 import { getTeamByName } from '../lib/teams'
+import { DataStatusChip } from './DataStatusChip'
 
 export function StandingsTable() {
   const { data: standings = [], isLoading, error } = useQuery({
     queryKey: ['standings'],
     queryFn: getStandings,
-    staleTime: 5 * 60_000,
+    staleTime: 30 * 60_000,
+    retry: 1,
+    initialData: getCachedStandings,
   })
 
   if (isLoading) {
@@ -60,7 +63,7 @@ export function StandingsTable() {
     )
   }
 
-  if (error || standings.length === 0) {
+  if (error && standings.length === 0) {
     return <div className="standings-table error-fallback">
       {error ? 'Ошибка загрузки данных' : 'Не удалось загрузить турнирную таблицу'}
     </div>
@@ -69,6 +72,10 @@ export function StandingsTable() {
   return (
     <div className="standings-table">
       <h2 className="standings-table__title">Турнирная таблица</h2>
+
+      <div className="standings-table__status">
+        <DataStatusChip sources={[{ queryKey: ['standings'], cacheKey: 'standings' }]} />
+      </div>
 
       <div className="content-enter table-scroll">
         <table className="standings-table__table">

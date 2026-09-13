@@ -97,6 +97,18 @@
   animation: syncSpin 0.8s linear infinite;
 }
 
+.match-list__sync .data-status-chip {
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  white-space: nowrap;
+}
+
+.match-list__sync .data-status-chip--idle {
+  color: inherit;
+}
+
 @keyframes syncSpin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }

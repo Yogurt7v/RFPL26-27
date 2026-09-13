@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { cacheGet, cacheSet } from './cache'
+import { cacheGet, cacheGetStale, cacheSet, clearDataStale, markDataStale } from './cache'
 
 const FAVORITES_CACHE_KEY = 'favorites_overview'
 const FAVORITES_CACHE_TTL = 24 * 60 * 60 * 1000
@@ -89,7 +89,15 @@ export interface FavoritesOverview {
 
 export async function getFavoritesOverview(): Promise<FavoritesOverview> {
   const { data, error } = await supabase.rpc('get_favorites_overview')
-  if (error || !data?.length) return { favorites: [], totalUsers: 0 }
+
+  if (error || !data?.length) {
+    const stale = cacheGetStale<FavoritesOverview>(FAVORITES_CACHE_KEY)
+    if (stale) {
+      markDataStale(FAVORITES_CACHE_KEY)
+      return stale
+    }
+    return { favorites: [], totalUsers: 0 }
+  }
 
   const json = (data[0] as { result: {
     favorites: { match_id: string; count: number; starlets: { username: string; userId: string }[] }[]
@@ -110,5 +118,6 @@ export async function getFavoritesOverview(): Promise<FavoritesOverview> {
   }
 
   cacheSet(FAVORITES_CACHE_KEY, result, FAVORITES_CACHE_TTL)
+  clearDataStale(FAVORITES_CACHE_KEY)
   return result
 }

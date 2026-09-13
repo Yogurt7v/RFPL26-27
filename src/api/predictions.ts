@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import { withRetry } from './retry'
-import { cacheGet, cacheSet } from './cache'
+import { cacheGet, cacheGetStale, cacheSet, clearDataStale, markDataStale } from './cache'
 
 const PREDICTED_KEYS_CACHE_TTL = 24 * 60 * 60 * 1000
 const PREDICTION_DETAIL_CACHE_TTL = 24 * 60 * 60 * 1000
@@ -227,8 +227,16 @@ export async function getUserPredictions(userId: string): Promise<UserPrediction
       .order('created_at', { ascending: false })
   )
 
+  const cacheKey = 'user_predictions_' + userId
+
   if (error) {
     console.error('Error fetching predictions:', error)
+
+    const stale = cacheGetStale<UserPrediction[]>(cacheKey)
+    if (stale) {
+      markDataStale(cacheKey)
+      return stale
+    }
     return []
   }
 
@@ -252,7 +260,8 @@ export async function getUserPredictions(userId: string): Promise<UserPrediction
     }
   })
 
-  cacheSet('user_predictions_' + userId, result, USER_PREDICTIONS_CACHE_TTL)
+  cacheSet(cacheKey, result, USER_PREDICTIONS_CACHE_TTL)
+  clearDataStale(cacheKey)
   return result
 }
 
@@ -280,14 +289,23 @@ export async function getUserPredictedMatchKeys(userId: string): Promise<Set<str
       .eq('user_id', userId)
   )
 
+  const cacheKey = 'predicted_keys_' + userId
+
   if (error || !data) {
     logQueryError('getUserPredictedMatchKeys', error)
+
+    const stale = cacheGetStale<string[]>(cacheKey)
+    if (stale) {
+      markDataStale(cacheKey)
+      return new Set(stale)
+    }
     return new Set()
   }
   const keys = new Set(
     (data as any[]).map(d => `${d.matches.round}|${d.matches.home_team}|${d.matches.away_team}`)
   )
-  cacheSet('predicted_keys_' + userId, [...keys], PREDICTED_KEYS_CACHE_TTL)
+  cacheSet(cacheKey, [...keys], PREDICTED_KEYS_CACHE_TTL)
+  clearDataStale(cacheKey)
   return keys
 }
 

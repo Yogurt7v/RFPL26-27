@@ -242,6 +242,8 @@ function parseStandingsFromHTML(html) {
 
 // ── Fetch helpers ──────────────────────────────────────────────────────
 
+const FETCH_TIMEOUT_MS = 20_000
+
 async function fetchHtml(path) {
   const url = `https://soccer365.ru${path}`
   const response = await fetch(url, {
@@ -258,6 +260,15 @@ async function fetchHtml(path) {
   }
 
   return stripScripts(await response.text())
+}
+
+async function fetchHtmlWithTimeout(path) {
+  return Promise.race([
+    fetchHtml(path),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`Timeout ${FETCH_TIMEOUT_MS}ms for ${path}`)), FETCH_TIMEOUT_MS)
+    ),
+  ])
 }
 
 // ── Main handler ───────────────────────────────────────────────────────
@@ -280,32 +291,98 @@ export default async function handler(req, res) {
   const log = []
   const errors = []
 
+  // ── 0. Atomic sync lock (dedup between cron / button / auto-sync tabs) ──
+  const { data: claimData, error: claimError } = await supabase.rpc('claim_sync', {
+    p_stale: '10 minutes',
+  })
+
+  if (claimError) {
+    console.error('Claim error:', claimError.message)
+    return res.status(500).json({ status: 'error', errors: [`Claim error: ${claimError.message}`] })
+  }
+
+  if (!claimData || claimData.length === 0) {
+    log.push('Another sync is already in progress')
+    return res.status(200).json({ status: 'busy', log, errors: [] })
+  }
+
+  const lockId = claimData[0].lock_id
+  let success = false
+
   try {
-    // ── 1. Fetch schedule (upcoming matches) ──
-    log.push('Fetching schedule...')
-    const scheduleHtml = await fetchHtml('/competitions/13/shedule/')
-    const scheduleMatches = parseMatchesFromHTML(scheduleHtml)
-    log.push(`Parsed ${scheduleMatches.length} scheduled matches`)
+    // ── 1. Fetch pages in parallel (schedule, results, live) ──
+    log.push('Fetching schedule, results, live...')
+    const [schedulePage, resultsPage, livePage] = await Promise.allSettled([
+      fetchHtmlWithTimeout('/competitions/13/shedule/'),
+      fetchHtmlWithTimeout('/competitions/13/results/'),
+      fetchHtmlWithTimeout('/online/'),
+    ])
 
-    // ── 2. Fetch results (finished matches) ──
-    log.push('Fetching results...')
-    const resultsHtml = await fetchHtml('/competitions/13/results/')
-    const resultMatches = parseMatchesFromHTML(resultsHtml)
-    log.push(`Parsed ${resultMatches.length} finished matches`)
+    const scheduleHtml = schedulePage.status === 'fulfilled' ? schedulePage.value : null
+    const resultsHtml = resultsPage.status === 'fulfilled' ? resultsPage.value : null
+    const liveHtml = livePage.status === 'fulfilled' ? livePage.value : null
 
-    // ── 3. Fetch live scores ──
-    log.push('Fetching live scores...')
-    const liveHtml = await fetchHtml('/online/')
-    const liveScores = parseLiveScoresFromHTML(liveHtml)
-    log.push(`Parsed ${liveScores.length} live matches`)
+    if (schedulePage.status === 'rejected') errors.push(`Schedule fetch error: ${schedulePage.reason.message}`)
+    if (resultsPage.status === 'rejected') errors.push(`Results fetch error: ${resultsPage.reason.message}`)
+    if (livePage.status === 'rejected') errors.push(`Live fetch error: ${livePage.reason.message}`)
 
-    // ── 4. Fetch standings ──
-    log.push('Fetching standings...')
-    const standingsHtml = await fetchHtml('/competitions/13/')
-    const standings = parseStandingsFromHTML(standingsHtml)
-    log.push(`Parsed ${standings.length} standings entries`)
+    const scheduleMatches = scheduleHtml ? parseMatchesFromHTML(scheduleHtml) : []
+    const resultMatches = resultsHtml ? parseMatchesFromHTML(resultsHtml) : []
+    const liveScores = liveHtml ? parseLiveScoresFromHTML(liveHtml) : []
+    log.push(`Parsed ${scheduleMatches.length} scheduled, ${resultMatches.length} finished, ${liveScores.length} live`)
 
-    // ── 5. Merge matches ──
+    // ── 2. Detect new finished results (drives standings/recalc/leaderboard) ──
+    const resultsFetchedOk = resultsPage.status === 'fulfilled'
+    const finishedParsed = resultMatches.filter(m => m.status === 'FINISHED')
+    let hasNewResults = false
+
+    if (finishedParsed.length > 0) {
+      const existing = await supabase
+        .from('matches')
+        .select('round, home_team, away_team, home_score, away_score')
+        .eq('status', 'FINISHED')
+        .limit(2000)
+
+      if (existing.error) {
+        errors.push(`Existing results check error: ${existing.error.message}`)
+      } else {
+        const dbMap = new Map()
+        for (const row of existing.data ?? []) {
+          dbMap.set(`${row.round}|${row.home_team}|${row.away_team}`, `${row.home_score}:${row.away_score}`)
+        }
+        hasNewResults = finishedParsed.some(
+          m => dbMap.get(`${m.round}|${m.home_team}|${m.away_team}`) !== `${m.home_score}:${m.away_score}`
+        )
+      }
+    }
+    if (hasNewResults) log.push('New finished results detected')
+
+    // ── 3. Fetch standings only when the table may have changed ──
+    let standings = []
+    let shouldFetchStandings = false
+
+    const { count: standingsCount, error: standingsCountError } = await supabase
+      .from('standings')
+      .select('team_id', { count: 'exact', head: true })
+    if (standingsCountError) errors.push(`Standings count error: ${standingsCountError.message}`)
+
+    const standingsEmpty = !standingsCount || standingsCount === 0
+    shouldFetchStandings = standingsEmpty || hasNewResults || !resultsFetchedOk
+
+    if (shouldFetchStandings) {
+      log.push('Fetching standings...')
+      try {
+        const standingsHtml = await fetchHtmlWithTimeout('/competitions/13/')
+        standings = parseStandingsFromHTML(standingsHtml)
+        log.push(`Parsed ${standings.length} standings entries`)
+      } catch (err) {
+        errors.push(`Standings fetch error: ${err.message}`)
+      }
+    } else {
+      log.push('Standings unchanged — skipping standings fetch')
+    }
+
+    // ── 4. Merge matches ──
     //   - Schedule has SCHEDULED matches (with date/time, no scores)
     //   - Results has FINISHED matches (with scores)
     //   - LiveScores has LIVE matches (overrides scores)
@@ -368,21 +445,39 @@ export default async function handler(req, res) {
     const allMatches = Array.from(matchMap.values())
     log.push(`Total unique matches to upsert: ${allMatches.length}`)
 
-    // ── 6. Upsert matches to Supabase ──
-    const { error: matchError } = await supabase
-      .from('matches')
-      .upsert(allMatches, {
-        onConflict: 'round, home_team, away_team',
-        ignoreDuplicates: false,
-      })
+    // ── 5. Upsert matches to Supabase (skip empty set) ──
+    if (allMatches.length > 0) {
+      const { error: matchError } = await supabase
+        .from('matches')
+        .upsert(allMatches, {
+          onConflict: 'round, home_team, away_team',
+          ignoreDuplicates: false,
+        })
 
-    if (matchError) {
-      errors.push(`Match upsert error: ${matchError.message}`)
+      if (matchError) {
+        errors.push(`Match upsert error: ${matchError.message}`)
+      } else {
+        log.push(`Upserted ${allMatches.length} matches successfully`)
+      }
     } else {
-      log.push(`Upserted ${allMatches.length} matches successfully`)
+      log.push('No matches parsed — skipping match upsert')
     }
 
-    // ── 7. Upsert standings ──
+    // ── 5.1. Bulk recalc of prediction points (only when scores changed) ──
+    if (hasNewResults || !resultsFetchedOk) {
+      const { data: recalcCount, error: recalcError } = await supabase
+        .rpc('recalculate_finished_predictions')
+
+      if (recalcError) {
+        errors.push(`Recalculate error: ${recalcError.message}`)
+      } else {
+        log.push(`Recalculated points for ${recalcCount ?? 0} predictions`)
+      }
+    } else {
+      log.push('No new finished results — skipping points recalculation')
+    }
+
+    // ── 6. Upsert standings (only when fetched) ──
     if (standings.length > 0) {
       const { error: standingError } = await supabase
         .from('standings')
@@ -398,10 +493,23 @@ export default async function handler(req, res) {
       }
     }
 
-    // ── 8. Response ──
-    const status = errors.length === 0 ? 200 : 207
+    // ── 6.1. Refresh materialized leaderboard (only when scores changed) ──
+    if (hasNewResults) {
+      const { error: leaderboardError } = await supabase.rpc('refresh_leaderboard')
+      if (leaderboardError) {
+        errors.push(`Leaderboard refresh error: ${leaderboardError.message}`)
+      } else {
+        log.push('Leaderboard refreshed')
+      }
+    } else {
+      log.push('No new finished results — skipping leaderboard refresh')
+    }
+
+    // ── 7. Response ──
+    success = errors.length === 0
+    const status = success ? 200 : 207
     return res.status(status).json({
-      status: errors.length === 0 ? 'ok' : 'partial',
+      status: success ? 'ok' : 'partial',
       log,
       errors,
       matches: allMatches.length,
@@ -415,5 +523,16 @@ export default async function handler(req, res) {
       log,
       errors: [...errors, error.message],
     })
+  } finally {
+    // ── 8. Release the lock and record the outcome ──
+    try {
+      await supabase.rpc('finish_sync', {
+        p_lock_id: lockId,
+        p_success: success,
+      })
+      log.push('Sync lock released')
+    } catch (err) {
+      console.error('Finish sync error:', err)
+    }
   }
 }

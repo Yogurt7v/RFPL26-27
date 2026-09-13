@@ -5,6 +5,7 @@ import { getTeamByName } from '../lib/teams'
 import { formatScore, formatDate } from '../lib/format'
 import { GlassCard } from './GlassCard'
 import { schedule } from '../lib/schedule'
+import { DataStatusChip } from './DataStatusChip'
 
 function formatGoalsThreshold(pred: UserPrediction): string {
   const parts: string[] = []
@@ -35,7 +36,8 @@ export function PredictionResults({ userId }: PredictionResultsProps) {
   const { data: predictions = [], isLoading, error } = useQuery({
     queryKey: ['predictions', userId],
     queryFn: () => getUserPredictions(userId),
-    staleTime: 30_000,
+    staleTime: 0,
+    retry: 1,
     initialData: () => getCachedUserPredictions(userId),
     placeholderData: keepPreviousData,
   })
@@ -88,6 +90,7 @@ export function PredictionResults({ userId }: PredictionResultsProps) {
     <div className="prediction-results">
       <div className="prediction-results__header">
         <span className="prediction-results__title">Мои прогнозы</span>
+        <DataStatusChip sources={[{ queryKey: ['predictions', userId], cacheKey: `user_predictions_${userId}` }]} />
       </div>
 
       <div className="prediction-results__total">

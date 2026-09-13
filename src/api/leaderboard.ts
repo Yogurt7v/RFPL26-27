@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
-import { cacheGet, cacheSet } from './cache'
+import { cacheGet, cacheGetStale, cacheSet, clearDataStale, markDataStale } from './cache'
 
+const LEADERBOARD_CACHE_KEY = 'leaderboard'
 const LEADERBOARD_CACHE_TTL = 24 * 60 * 60 * 1000
 
 export interface LeaderboardEntry {
@@ -26,21 +27,33 @@ function mapRows(rows: Record<string, unknown>[]): LeaderboardEntry[] {
 }
 
 export function getCachedLeaderboard(): LeaderboardEntry[] | undefined {
-  return cacheGet<LeaderboardEntry[]>('leaderboard') ?? undefined
+  return cacheGet<LeaderboardEntry[]>(LEADERBOARD_CACHE_KEY) ?? undefined
 }
 
 export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
-  const { data, error } = await supabase
-    .from('leaderboard')
-    .select('*')
-    .order('total_points', { ascending: false })
+  try {
+    const { data, error } = await supabase
+      .from('leaderboard')
+      .select('*')
+      .order('total_points', { ascending: false })
 
-  if (error) {
-    console.error('Error fetching leaderboard:', error)
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    const result = mapRows(data as Record<string, unknown>[])
+    cacheSet(LEADERBOARD_CACHE_KEY, result, LEADERBOARD_CACHE_TTL)
+    clearDataStale(LEADERBOARD_CACHE_KEY)
+    return result
+  } catch (err) {
+    console.error('Error fetching leaderboard:', err instanceof Error ? err.message : err)
+
+    const stale = cacheGetStale<LeaderboardEntry[]>(LEADERBOARD_CACHE_KEY)
+    if (stale) {
+      markDataStale(LEADERBOARD_CACHE_KEY)
+      return stale
+    }
+
     return []
   }
-
-  const result = mapRows(data as Record<string, unknown>[])
-  cacheSet('leaderboard', result, LEADERBOARD_CACHE_TTL)
-  return result
 }

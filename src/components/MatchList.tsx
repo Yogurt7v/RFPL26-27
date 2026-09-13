@@ -12,6 +12,8 @@ import { MatchCard } from './MatchCard'
 import { FavoriteSheet } from './FavoriteSheet'
 import { getUserPredictedMatchKeys, getCachedPredictedKeys } from '../api/predictions'
 import { triggerSync } from '../api/sync'
+import { DataStatusChip } from './DataStatusChip'
+import { useSyncStateQuery, SYNC_STATE_QUERY_KEY } from '../hooks/useSyncState'
 
 interface MatchListProps {
   onPredict?: (matchId: string) => void
@@ -48,6 +50,7 @@ export function MatchList({ onPredict }: MatchListProps) {
 
   const { user } = useAuth()
   const queryClient = useQueryClient()
+  const { data: syncState } = useSyncStateQuery()
   const {
     isFavorite,
     toggleFavorite,
@@ -85,7 +88,8 @@ export function MatchList({ onPredict }: MatchListProps) {
     queryKey: ['predictions', 'keys', user?.id],
     queryFn: () => getUserPredictedMatchKeys(user!.id),
     enabled: !!user?.id,
-    staleTime: 60_000,
+    staleTime: 0,
+    retry: 1,
     initialData: user?.id ? () => getCachedPredictedKeys(user.id) : undefined,
     placeholderData: keepPreviousData,
   })
@@ -168,6 +172,9 @@ export function MatchList({ onPredict }: MatchListProps) {
     try {
       await triggerSync()
       queryClient.invalidateQueries({ queryKey: ['matches'] })
+      queryClient.invalidateQueries({ queryKey: ['standings'] })
+      queryClient.invalidateQueries({ queryKey: ['leaderboard'] })
+      queryClient.invalidateQueries({ queryKey: SYNC_STATE_QUERY_KEY })
     } catch (err) {
       setSyncError(err instanceof Error ? err.message : 'Не удалось обновить данные')
     } finally {
@@ -235,7 +242,23 @@ export function MatchList({ onPredict }: MatchListProps) {
           title="Принудительно обновить данные матчей"
         >
           <span className={`match-list__sync-icon${isSyncing ? ' match-list__sync-icon--spin' : ''}`}>↻</span>
-          {isSyncing ? 'Обновление…' : 'Обновить'}
+          {isSyncing ? (
+            <span>Обновление…</span>
+          ) : (
+            <DataStatusChip
+              sources={[
+                { queryKey: ['matches', 'results'], cacheKey: 'results' },
+                ...(user?.id
+                  ? [
+                      { queryKey: ['predictions', 'keys', user.id], cacheKey: `predicted_keys_${user.id}` },
+                      { queryKey: ['favorites', 'overview'], cacheKey: 'favorites_overview' },
+                    ]
+                  : []),
+              ]}
+              syncState={syncState}
+              fallback="Обновить"
+            />
+          )}
         </button>
       </div>
 

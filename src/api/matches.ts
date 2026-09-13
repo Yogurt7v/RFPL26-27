@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import { withRetry } from './retry'
-import { cacheGet, cacheGetStale, cacheSet } from './cache'
+import { cacheGet, cacheGetStale, cacheSet, clearDataStale, markDataStale } from './cache'
 
 const SCHEDULE_CACHE_KEY = 'schedule'
 const SCHEDULE_CACHE_TTL = 24 * 60 * 60 * 1000
@@ -111,6 +111,7 @@ export async function getResults(): Promise<ResultEntry[]> {
       supabase
         .from('matches')
         .select('id, round, home_team, away_team, home_score, away_score, status')
+        .neq('status', 'SCHEDULED')
         .order('round', { ascending: true })
         .order('id', { ascending: true })
     )
@@ -130,10 +131,14 @@ export async function getResults(): Promise<ResultEntry[]> {
     }))
 
     cacheSet(RESULTS_CACHE_KEY, results, RESULTS_CACHE_TTL)
+    clearDataStale(RESULTS_CACHE_KEY)
     return results
   } catch {
     const stale = cacheGetStale<ResultEntry[]>(RESULTS_CACHE_KEY)
-    if (stale) return stale
+    if (stale) {
+      markDataStale(RESULTS_CACHE_KEY)
+      return stale
+    }
     throw new Error('Error fetching results: network error and no cached data')
   }
 }

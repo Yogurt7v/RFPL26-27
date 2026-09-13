@@ -1,5 +1,6 @@
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { getLeaderboard, getCachedLeaderboard, type LeaderboardEntry } from '../api/leaderboard'
+import { DataStatusChip } from './DataStatusChip'
 
 interface LeaderboardTableProps {
   currentUserId?: string
@@ -9,7 +10,8 @@ export function LeaderboardTable({ currentUserId }: LeaderboardTableProps) {
   const { data: entries = [], isLoading, error } = useQuery({
     queryKey: ['leaderboard'],
     queryFn: getLeaderboard,
-    staleTime: 5 * 60_000,
+    staleTime: 60 * 60_000,
+    retry: 1,
     initialData: getCachedLeaderboard,
     placeholderData: keepPreviousData,
   })
@@ -52,7 +54,7 @@ export function LeaderboardTable({ currentUserId }: LeaderboardTableProps) {
     )
   }
 
-  if (error || entries.length === 0) {
+  if (error && entries.length === 0) {
     return (
       <div className="leaderboard-table error-fallback">
         {error ? 'Ошибка загрузки данных' : 'Пока нет данных для таблицы лидеров'}
@@ -63,6 +65,10 @@ export function LeaderboardTable({ currentUserId }: LeaderboardTableProps) {
   return (
     <div className="leaderboard-table">
       <h2 className="leaderboard-table__title">Таблица лидеров</h2>
+
+      <div className="leaderboard-table__status">
+        <DataStatusChip sources={[{ queryKey: ['leaderboard'], cacheKey: 'leaderboard' }]} />
+      </div>
 
       <table className="leaderboard-table__table content-enter">
         <thead>

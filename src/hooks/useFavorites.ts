@@ -20,7 +20,8 @@ export function useFavorites() {
     queryKey: ['favorites', 'overview'],
     queryFn: getFavoritesOverview,
     enabled: !!userId,
-    staleTime: 60_000,
+    staleTime: 0,
+    retry: 1,
     placeholderData: keepPreviousData,
     initialData: getCachedFavoritesOverview,
   })

@@ -1,4 +1,5 @@
-import { useContext, useState, useEffect } from 'react'
+import { useContext, useState } from 'react'
+import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { ThemeContext } from '../context/ThemeContext'
 import { useAuth } from '../hooks/useAuth'
 import { getSecurityQuestion, setSecurityQuestion, SECURITY_QUESTIONS } from '../api/auth'
@@ -16,17 +17,19 @@ const FONT_SIZE_LABELS: Record<number, string> = {
 export function SettingsPage() {
   const themeCtx = useContext(ThemeContext)
   const { user, logout } = useAuth()
+  const queryClient = useQueryClient()
   const [showQuestionForm, setShowQuestionForm] = useState(false)
   const [showSecurity, setShowSecurity] = useState(false)
   const [questionMsg, setQuestionMsg] = useState<string | null>(null)
-  const [questionSet, setQuestionSet] = useState(false)
 
-  useEffect(() => {
-    if (!user) return
-    getSecurityQuestion(user.username).then(q => {
-      if (q) setQuestionSet(true)
-    })
-  }, [user])
+  const { data: questionSet = false } = useQuery({
+    queryKey: ['security-question', user?.username],
+    queryFn: () => getSecurityQuestion(user!.username),
+    enabled: !!user?.username,
+    staleTime: 0,
+    retry: 1,
+  })
+  const hasSecurityQuestion = questionSet !== null && questionSet !== undefined
 
   if (!themeCtx) return null
 
@@ -42,7 +45,7 @@ export function SettingsPage() {
     const ok = await setSecurityQuestion(user!.id, question, answer)
     if (ok) {
       setQuestionMsg('Сохранено')
-      setQuestionSet(true)
+      queryClient.invalidateQueries({ queryKey: ['security-question', user!.username] })
       setShowQuestionForm(false)
     } else {
       setQuestionMsg('Ошибка сохранения')
@@ -86,7 +89,7 @@ export function SettingsPage() {
                   className="btn btn--primary"
                   onClick={() => setShowQuestionForm(true)}
                 >
-                  {questionSet ? 'Изменить контрольный вопрос' : 'Задать контрольный вопрос'}
+                  {hasSecurityQuestion ? 'Изменить контрольный вопрос' : 'Задать контрольный вопрос'}
                 </button>
               ) : (
                 <form className="settings-security-form" onSubmit={handleSaveQuestion}>
