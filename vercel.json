@@ -18,10 +18,6 @@
     {
       "path": "/api/cron/sync-matches",
       "schedule": "0 19 * * *"
-    },
-    {
-      "path": "/api/cron/keepalive",
-      "schedule": "*/10 * * * *"
     }
   ]
 }
