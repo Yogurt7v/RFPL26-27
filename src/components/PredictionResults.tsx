@@ -36,7 +36,7 @@ export function PredictionResults({ userId }: PredictionResultsProps) {
   const { data: predictions = [], isLoading, error } = useQuery({
     queryKey: ['predictions', userId],
     queryFn: () => getUserPredictions(userId),
-    staleTime: 0,
+    staleTime: 120_000,
     retry: 1,
     initialData: () => getCachedUserPredictions(userId),
     placeholderData: keepPreviousData,

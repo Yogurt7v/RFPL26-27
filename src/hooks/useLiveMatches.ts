@@ -23,7 +23,7 @@ export function useLiveMatches(
   const resultsQuery = useQuery({
     queryKey: ['matches', 'results'],
     queryFn: getResults,
-    staleTime: 0,
+    staleTime: 5 * 60_000,
     gcTime: 2 * 60 * 60 * 1000,
     refetchInterval: (query) => {
       if (query.state.error) return 2 * 60 * 1000

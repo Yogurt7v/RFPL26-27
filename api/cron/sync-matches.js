@@ -505,13 +505,8 @@ export default async function handler(req, res) {
       }
     }
 
-    // ── 6.1. Refresh materialized leaderboard (idempotent, always run) ──
-    const { error: leaderboardError } = await supabase.rpc('refresh_leaderboard')
-    if (leaderboardError) {
-      errors.push(`Leaderboard refresh error: ${leaderboardError.message}`)
-    } else {
-      log.push('Leaderboard refreshed')
-    }
+    // ── 6.1. Leaderboard matview пересчитывается отдельным эндпоинтом
+    //        (api/refresh-leaderboard.js) при заходе на страницу — крон его не трогает.
 
     // ── 7. Response ──
     success = errors.length === 0
