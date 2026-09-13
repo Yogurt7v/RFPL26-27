@@ -347,29 +347,33 @@ export default async function handler(req, res) {
     const liveScores = liveHtml ? parseLiveScoresFromHTML(liveHtml) : []
     log.push(`Parsed ${scheduleMatches.length} scheduled, ${resultMatches.length} finished, ${liveScores.length} live`)
 
-    // ── 2. Detect new finished results (drives standings/recalc/leaderboard) ──
+    // ── 2. Snapshot current rows + detect changes vs parsed data ──
     const resultsFetchedOk = resultsPage.status === 'fulfilled'
     const finishedParsed = resultMatches.filter(m => m.status === 'FINISHED')
-    let hasNewResults = false
+    const existingMap = new Map()
 
-    if (finishedParsed.length > 0) {
-      const existing = await supabase
-        .from('matches')
-        .select('round, home_team, away_team, home_score, away_score')
-        .eq('status', 'FINISHED')
-        .limit(2000)
+    const matchesSnapshot = await supabase
+      .from('matches')
+      .select('round, home_team, away_team, home_score, away_score, status, match_date, stadium_name')
+      .limit(1000)
 
-      if (existing.error) {
-        errors.push(`Existing results check error: ${existing.error.message}`)
-      } else {
-        const dbMap = new Map()
-        for (const row of existing.data ?? []) {
-          dbMap.set(`${row.round}|${row.home_team}|${row.away_team}`, `${row.home_score}:${row.away_score}`)
-        }
-        hasNewResults = finishedParsed.some(
-          m => dbMap.get(`${m.round}|${m.home_team}|${m.away_team}`) !== `${m.home_score}:${m.away_score}`
-        )
+    if (matchesSnapshot.error) {
+      errors.push(`Matches snapshot error: ${matchesSnapshot.error.message}`)
+    } else {
+      for (const row of matchesSnapshot.data ?? []) {
+        existingMap.set(`${row.round}|${row.home_team}|${row.away_team}`, row)
       }
+    }
+
+    let hasNewResults = finishedParsed.length > 0 && Boolean(matchesSnapshot.error)
+    if (!matchesSnapshot.error && finishedParsed.length > 0) {
+      hasNewResults = finishedParsed.some(m => {
+        const stored = existingMap.get(`${m.round}|${m.home_team}|${m.away_team}`)
+        if (!stored) return true
+        return (stored.home_score ?? null) !== (m.home_score ?? null)
+          || (stored.away_score ?? null) !== (m.away_score ?? null)
+          || stored.status !== 'FINISHED'
+      })
     }
     if (hasNewResults) log.push('New finished results detected')
 
@@ -461,11 +465,28 @@ export default async function handler(req, res) {
     const allMatches = Array.from(matchMap.values())
     log.push(`Total unique matches to upsert: ${allMatches.length}`)
 
-    // ── 5. Upsert matches to Supabase (skip empty set) ──
-    if (allMatches.length > 0) {
+    const dateEpoch = (d) => {
+      const t = d ? new Date(d).getTime() : NaN
+      return Number.isFinite(t) ? t : ''
+    }
+    const matchFingerprint = (m) =>
+      `${m.home_score ?? ''}|${m.away_score ?? ''}|${m.status}|${dateEpoch(m.match_date)}|${m.stadium_name ?? ''}`
+
+    // ── 5. Upsert only matches that actually changed ──
+    const changedMatches = []
+    for (const m of allMatches) {
+      const stored = existingMap.get(`${m.round}|${m.home_team}|${m.away_team}`)
+      if (!stored || matchFingerprint(stored) !== matchFingerprint(m)) {
+        changedMatches.push(m)
+      }
+    }
+
+    log.push(`${changedMatches.length} changed, ${allMatches.length - changedMatches.length} unchanged`)
+
+    if (changedMatches.length > 0) {
       const { error: matchError } = await supabase
         .from('matches')
-        .upsert(allMatches, {
+        .upsert(changedMatches, {
           onConflict: 'round, home_team, away_team',
           ignoreDuplicates: false,
         })
@@ -473,10 +494,10 @@ export default async function handler(req, res) {
       if (matchError) {
         errors.push(`Match upsert error: ${matchError.message}`)
       } else {
-        log.push(`Upserted ${allMatches.length} matches successfully`)
+        log.push(`Upserted ${changedMatches.length} changed matches successfully`)
       }
     } else {
-      log.push('No matches parsed — skipping match upsert')
+      log.push('No matches changed — skipping match upsert')
     }
 
     // ── 5.1. Bulk recalc of prediction points (idempotent, always run) ──

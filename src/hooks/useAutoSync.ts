@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { schedule } from '../lib/schedule'
 import { useSyncStateQuery } from './useSyncState'
 
-const STALE_DEFAULT_MS = 10 * 60_000
+const STALE_DEFAULT_MS = 60 * 60_000
 const STALE_MATCHDAY_MS = 5 * 60_000
 const RETRY_COOLDOWN_MS = 2 * 60_000
 
