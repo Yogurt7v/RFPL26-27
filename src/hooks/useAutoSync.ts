@@ -51,9 +51,8 @@ export function useAutoSync() {
           queryClient.invalidateQueries({ queryKey: ['matches'] })
           queryClient.invalidateQueries({ queryKey: ['standings'] })
           queryClient.invalidateQueries({ queryKey: ['leaderboard'] })
-          if (body?.status === 'ok') {
-            queryClient.invalidateQueries({ queryKey: ['sync', 'state'] })
-          }
+          queryClient.invalidateQueries({ queryKey: ['predictions'] })
+          queryClient.invalidateQueries({ queryKey: ['sync', 'state'] })
         }
       } catch {
         // сетевой сбой — дождёмся следующего тика

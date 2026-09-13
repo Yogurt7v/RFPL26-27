@@ -138,45 +138,61 @@ function parseMatchesFromHTML(html) {
   return matches
 }
 
+function parseTeamSoccer365Id(region) {
+  const m = region.match(/_(\d+)\.png/)
+  return m ? parseInt(m[1]) : null
+}
+
 function parseLiveScoresFromHTML(html) {
   const scores = []
-  const gameBlocks = html.split(/<div class="game_block /)
+  const blocks = html.split(/<div id="gm\d+"/)
 
-  for (let i = 1; i < gameBlocks.length; i++) {
-    const block = '<div class="game_block ' + gameBlocks[i]
+  for (let i = 1; i < blocks.length; i++) {
+    const block = blocks[i]
 
-    const htIdMatch = block.match(/dt-ht="(\d+)"/)
-    const atIdMatch = block.match(/dt-at="(\d+)"/)
-    if (!htIdMatch || !atIdMatch) continue
+    const statusAttrMatch = block.match(/dt-status="([iuf])"/)
+    if (!statusAttrMatch) continue
+    const statusAttr = statusAttrMatch[1]
+    // 'u' = upcoming (no score), 'f' = finished (authoritative source is /results/)
+    if (statusAttr === 'u') continue
 
-    const home = teamName(parseInt(htIdMatch[1]))
-    const away = teamName(parseInt(atIdMatch[1]))
+    const htStart = block.indexOf('<div class="ht">')
+    const atStart = block.indexOf('<div class="at">')
+    if (htStart === -1 || atStart === -1 || atStart < htStart) continue
+
+    const homeRegion = block.slice(htStart, atStart)
+    const awayRegion = block.slice(atStart)
+
+    const homeId = parseTeamSoccer365Id(homeRegion)
+    const awayId = parseTeamSoccer365Id(awayRegion)
+    if (homeId === null || awayId === null) continue
+
+    const home = teamName(homeId)
+    const away = teamName(awayId)
     if (!home || !away) continue
 
-    const glsMatches = [...block.matchAll(/<div class="gls">([\s\S]*?)<\/div>/g)]
-    if (glsMatches.length < 2) continue
+    const homeGls = homeRegion.match(/<div class="gls">([^<]+)<\/div>/)
+    const awayGls = awayRegion.match(/<div class="gls">([^<]+)<\/div>/)
+    if (!homeGls || !awayGls) continue
 
-    const homeScoreText = glsMatches[0][1].trim()
-    const awayScoreText = glsMatches[1][1].trim()
-    if (homeScoreText === '-' || awayScoreText === '-') continue
-
-    const hs = parseInt(homeScoreText)
-    const as = parseInt(awayScoreText)
+    const hs = parseInt(homeGls[1].trim())
+    const as = parseInt(awayGls[1].trim())
     if (isNaN(hs) || isNaN(as)) continue
 
-    let status = 'LIVE'
-    if (block.includes('half') || block.includes('HT')) {
-      status = 'HALFTIME'
-    } else if (block.includes('fin') || block.includes('FT')) {
-      status = 'FINISHED'
-    }
+    if (statusAttr === 'f') continue
 
+    const statusTextMatch = block.match(/<div class="status"><span[^>]*>([\s\S]*?)<\/span><\/div>/)
+    const statusText = statusTextMatch ? statusTextMatch[1] : ''
+    const status = /Перерыв|HT/.test(statusText) ? 'HALFTIME' : 'LIVE'
+
+    const roundMatch = block.match(/<div class="stage">(\d+)-й тур<\/div>/)
     scores.push({
       home_team: home,
       away_team: away,
       home_score: hs,
       away_score: as,
       status,
+      round: roundMatch ? parseInt(roundMatch[1]) : null,
     })
   }
 
@@ -421,7 +437,7 @@ export default async function handler(req, res) {
             ...m,
             home_score: live.home_score,
             away_score: live.away_score,
-            status: live.status === 'FINISHED' ? 'FINISHED' : 'LIVE',
+            status: live.status,
           })
           break
         }
@@ -434,10 +450,10 @@ export default async function handler(req, res) {
           home_team: live.home_team,
           away_team: live.away_team,
           match_date: new Date().toISOString(),
-          status: live.status === 'FINISHED' ? 'FINISHED' : 'LIVE',
+          status: live.status,
           home_score: live.home_score,
           away_score: live.away_score,
-          round: 0,
+          round: live.round ?? 0,
         })
       }
     }
@@ -463,18 +479,14 @@ export default async function handler(req, res) {
       log.push('No matches parsed — skipping match upsert')
     }
 
-    // ── 5.1. Bulk recalc of prediction points (only when scores changed) ──
-    if (hasNewResults || !resultsFetchedOk) {
-      const { data: recalcCount, error: recalcError } = await supabase
-        .rpc('recalculate_finished_predictions')
+    // ── 5.1. Bulk recalc of prediction points (idempotent, always run) ──
+    const { data: recalcCount, error: recalcError } = await supabase
+      .rpc('recalculate_finished_predictions')
 
-      if (recalcError) {
-        errors.push(`Recalculate error: ${recalcError.message}`)
-      } else {
-        log.push(`Recalculated points for ${recalcCount ?? 0} predictions`)
-      }
+    if (recalcError) {
+      errors.push(`Recalculate error: ${recalcError.message}`)
     } else {
-      log.push('No new finished results — skipping points recalculation')
+      log.push(`Recalculated points for ${recalcCount ?? 0} predictions`)
     }
 
     // ── 6. Upsert standings (only when fetched) ──
@@ -493,16 +505,12 @@ export default async function handler(req, res) {
       }
     }
 
-    // ── 6.1. Refresh materialized leaderboard (only when scores changed) ──
-    if (hasNewResults) {
-      const { error: leaderboardError } = await supabase.rpc('refresh_leaderboard')
-      if (leaderboardError) {
-        errors.push(`Leaderboard refresh error: ${leaderboardError.message}`)
-      } else {
-        log.push('Leaderboard refreshed')
-      }
+    // ── 6.1. Refresh materialized leaderboard (idempotent, always run) ──
+    const { error: leaderboardError } = await supabase.rpc('refresh_leaderboard')
+    if (leaderboardError) {
+      errors.push(`Leaderboard refresh error: ${leaderboardError.message}`)
     } else {
-      log.push('No new finished results — skipping leaderboard refresh')
+      log.push('Leaderboard refreshed')
     }
 
     // ── 7. Response ──
@@ -534,5 +542,21 @@ export default async function handler(req, res) {
     } catch (err) {
       console.error('Finish sync error:', err)
     }
+  }
+}
+
+// ── Smoke test: verify live parser against current /online/ ────────────
+if (process.argv.includes('--test-live-parse')) {
+  try {
+    const html = await fetchHtmlWithTimeout('/online/')
+    const scores = parseLiveScoresFromHTML(html)
+    console.log(`Parsed ${scores.length} live RFPL matches`)
+    for (const s of scores) {
+      console.log(`  ${s.home_team} ${s.home_score}:${s.away_score} ${s.away_team} [${s.status}] round=${s.round}`)
+    }
+    process.exit(scores.length > 0 ? 0 : 1)
+  } catch (err) {
+    console.error('Test failed:', err.message)
+    process.exit(1)
   }
 }
