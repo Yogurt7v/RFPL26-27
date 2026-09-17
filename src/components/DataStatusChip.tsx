@@ -1,7 +1,12 @@
-import { useReducer, useEffect } from 'react'
+import { useCallback, useSyncExternalStore } from 'react'
 import { useQueryClient, type QueryKey } from '@tanstack/react-query'
 import { getStaleMarker, subscribeStale, cacheGetUpdatedAt } from '../api/cache'
 import { formatTime } from '../lib/format'
+
+let version = 0
+function bumpVersion() {
+  version += 1
+}
 
 export interface DataSource {
   queryKey: QueryKey
@@ -28,16 +33,21 @@ interface DataStatusChipProps {
 
 export function DataStatusChip({ sources, syncState, fallback }: DataStatusChipProps) {
   const queryClient = useQueryClient()
-  const [, force] = useReducer((x: number) => x + 1, 0)
 
-  useEffect(() => {
-    const unsubCache = queryClient.getQueryCache().subscribe(() => force())
-    const unsubStale = subscribeStale(() => force())
-    return () => {
-      unsubCache()
-      unsubStale()
-    }
-  }, [queryClient])
+  useSyncExternalStore(
+    useCallback(
+      () => {
+        const unsubCache = queryClient.getQueryCache().subscribe(bumpVersion)
+        const unsubStale = subscribeStale(bumpVersion)
+        return () => {
+          unsubCache()
+          unsubStale()
+        }
+      },
+      [queryClient],
+    ),
+    () => version,
+  )
 
   const statuses = sources.map(source => {
     const state = queryClient.getQueryState(source.queryKey)
