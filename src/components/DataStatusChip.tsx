@@ -71,7 +71,7 @@ export function DataStatusChip({ sources, syncState, fallback }: DataStatusChipP
   if (updating) {
     return (
       <span className="data-status-chip data-status-chip--updating" title="Обновление данных из БД">
-        ⟳ обновляется
+        обновляется
       </span>
     )
   }

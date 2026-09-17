@@ -348,7 +348,6 @@ export default async function handler(req, res) {
     log.push(`Parsed ${scheduleMatches.length} scheduled, ${resultMatches.length} finished, ${liveScores.length} live`)
 
     // ── 2. Snapshot current rows + detect changes vs parsed data ──
-    const resultsFetchedOk = resultsPage.status === 'fulfilled'
     const finishedParsed = resultMatches.filter(m => m.status === 'FINISHED')
     const existingMap = new Map()
 
@@ -377,29 +376,52 @@ export default async function handler(req, res) {
     }
     if (hasNewResults) log.push('New finished results detected')
 
-    // ── 3. Fetch standings only when the table may have changed ──
+    // ── 3. Fetch standings and compare with DB ──
     let standings = []
-    let shouldFetchStandings = false
+    let standingsChanged = false
 
-    const { count: standingsCount, error: standingsCountError } = await supabase
-      .from('standings')
-      .select('team_id', { count: 'exact', head: true })
-    if (standingsCountError) errors.push(`Standings count error: ${standingsCountError.message}`)
+    log.push('Fetching standings...')
+    try {
+      const standingsHtml = await fetchHtmlWithTimeout('/competitions/13/')
+      const parsedStandings = parseStandingsFromHTML(standingsHtml)
+      log.push(`Parsed ${parsedStandings.length} standings entries`)
 
-    const standingsEmpty = !standingsCount || standingsCount === 0
-    shouldFetchStandings = standingsEmpty || hasNewResults || !resultsFetchedOk
+      const { data: existingStandings, error: existingStandingsError } = await supabase
+        .from('standings')
+        .select('team_id, position, played, won, drawn, lost, goals_for, goals_against, goal_difference, points')
+        .order('team_id')
 
-    if (shouldFetchStandings) {
-      log.push('Fetching standings...')
-      try {
-        const standingsHtml = await fetchHtmlWithTimeout('/competitions/13/')
-        standings = parseStandingsFromHTML(standingsHtml)
-        log.push(`Parsed ${standings.length} standings entries`)
-      } catch (err) {
-        errors.push(`Standings fetch error: ${err.message}`)
+      if (existingStandingsError) {
+        errors.push(`Standings snapshot error: ${existingStandingsError.message}`)
+        standings = parsedStandings
+        standingsChanged = true
+      } else {
+        const existingMap = new Map()
+        for (const row of existingStandings ?? []) {
+          existingMap.set(row.team_id, row)
+        }
+        standings = parsedStandings.filter(s => {
+          const e = existingMap.get(s.team_id)
+          if (!e) return true
+          return e.position !== s.position
+            || e.played !== s.played
+            || e.won !== s.won
+            || e.drawn !== s.drawn
+            || e.lost !== s.lost
+            || e.goals_for !== s.goals_for
+            || e.goals_against !== s.goals_against
+            || e.goal_difference !== s.goal_difference
+            || e.points !== s.points
+        })
+        standingsChanged = standings.length > 0
+        if (standingsChanged) {
+          log.push(`${standings.length} of ${parsedStandings.length} standings entries changed`)
+        } else {
+          log.push('Standings unchanged — skipping upsert')
+        }
       }
-    } else {
-      log.push('Standings unchanged — skipping standings fetch')
+    } catch (err) {
+      errors.push(`Standings fetch error: ${err.message}`)
     }
 
     // ── 4. Merge matches ──
@@ -510,8 +532,8 @@ export default async function handler(req, res) {
       log.push(`Recalculated points for ${recalcCount ?? 0} predictions`)
     }
 
-    // ── 6. Upsert standings (only when fetched) ──
-    if (standings.length > 0) {
+    // ── 6. Upsert standings (only when changed) ──
+    if (standingsChanged && standings.length > 0) {
       const { error: standingError } = await supabase
         .from('standings')
         .upsert(standings, {
