@@ -1,6 +1,7 @@
 import { useReducer, useEffect } from 'react'
 import { useQueryClient, type QueryKey } from '@tanstack/react-query'
-import { getStaleMarker, subscribeStale } from '../api/cache'
+import { getStaleMarker, subscribeStale, cacheGetUpdatedAt } from '../api/cache'
+import { formatTime } from '../lib/format'
 
 export interface DataSource {
   queryKey: QueryKey
@@ -12,10 +13,11 @@ export interface SyncStateInfo {
   lastSuccessAt: number | null
 }
 
-const RECENT_SUCCESS_MS = 60 * 60_000
-
-function formatTime(ts: number): string {
-  return new Date(ts).toLocaleTimeString('ru-RU', { hour12: false })
+function formatShortDateTime(ts: number): string {
+  const d = new Date(ts)
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  return `${day}.${month} ${formatTime(d)}`
 }
 
 interface DataStatusChipProps {
@@ -43,46 +45,45 @@ export function DataStatusChip({ sources, syncState, fallback }: DataStatusChipP
       cacheKey: source.cacheKey,
       hasData: state?.data !== undefined,
       isFetching: state?.fetchStatus === 'fetching',
+      dataUpdatedAt: state?.dataUpdatedAt ?? 0,
       staleAt: getStaleMarker(source.cacheKey),
     }
   })
 
-  const updating = statuses.some(s => s.isFetching && s.hasData)
-  const stale = statuses.filter(s => s.hasData && s.staleAt !== null)
-  const lastStaleAt = stale.reduce((max, s) => Math.max(max, s.staleAt ?? 0), 0)
+  const updating = statuses.some(s => s.isFetching && s.hasData) || !!syncState?.inProgress
+  const isStale = statuses.some(s => s.hasData && s.staleAt !== null)
 
-  const serverUpdating = !!syncState?.inProgress
-  const lastSuccess = syncState?.lastSuccessAt ?? 0
-  const recentlySynced = syncState !== undefined && lastSuccess > 0 && Date.now() - lastSuccess <= RECENT_SUCCESS_MS
+  const lastUpdatedAt = statuses.reduce(
+    (max, s) => Math.max(max, cacheGetUpdatedAt(s.cacheKey) ?? s.dataUpdatedAt),
+    0
+  )
 
-  let label: string
-  let mode: 'updating' | 'stale' | 'ok'
-
-  if (updating || serverUpdating) {
-    label = '⟳ обновляется'
-    mode = 'updating'
-  } else if (stale.length > 0) {
-    label = `кэш от ${formatTime(lastStaleAt)}`
-    mode = 'stale'
-  } else if (recentlySynced) {
-    label = `обновлено ${formatTime(lastSuccess)}`
-    mode = 'ok'
-  } else if (fallback !== undefined) {
-    return <span className="data-status-chip data-status-chip--idle">{fallback}</span>
-  } else {
-    return null
+  if (updating) {
+    return (
+      <span className="data-status-chip data-status-chip--updating" title="Обновление данных из БД">
+        ⟳ обновляется
+      </span>
+    )
   }
 
-  return (
-    <span
-      className={`data-status-chip data-status-chip--${mode}`}
-      title={mode === 'updating'
-        ? 'Обновление данных из БД'
-        : mode === 'stale'
+  if (lastUpdatedAt > 0) {
+    const label = `обновлено ${formatShortDateTime(lastUpdatedAt)}`
+    return (
+      <span
+        className={`data-status-chip data-status-chip--ok${isStale ? ' data-status-chip--has-stale' : ''}`}
+        title={isStale
           ? 'Последний запрос не дошёл — показаны данные из кэша'
           : 'Данные синхронизированы'}
-    >
-      {label}
-    </span>
-  )
+      >
+        {label}
+        {isStale && <span className="data-status-chip__mark">кэш</span>}
+      </span>
+    )
+  }
+
+  if (fallback !== undefined) {
+    return <span className="data-status-chip data-status-chip--idle">{fallback}</span>
+  }
+
+  return <span className="data-status-chip data-status-chip--idle">—</span>
 }

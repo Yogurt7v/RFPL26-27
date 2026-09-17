@@ -29,4 +29,5 @@ pnpm-debug.log*
 .mimocode
 AGENTS.md
 plan.md
-.opencode
+.opencode/*
+.mimocode/*

@@ -187,6 +187,23 @@
   color: var(--color-success);
 }
 
+.data-status-chip__mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  border: 1px dashed var(--color-warning);
+  background-color: rgba(230, 153, 0, 0.08);
+  color: var(--color-warning);
+  font-size: 0.9em;
+  margin-left: 2px;
+}
+
+.data-status-chip--has-stale {
+  border-color: var(--color-warning);
+}
+
 .standings-table__status,
 .leaderboard-table__status {
   display: flex;

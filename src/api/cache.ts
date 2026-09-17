@@ -4,6 +4,7 @@ const DEFAULT_TTL = 15 * 60 * 1000
 interface CacheEntry<T> {
   value: T
   expiresAt: number
+  updatedAt: number
 }
 
 export function cacheGet<T>(key: string): T | null {
@@ -26,6 +27,7 @@ export function cacheSet(key: string, value: unknown, ttlMs: number = DEFAULT_TT
     const entry: CacheEntry<unknown> = {
       value,
       expiresAt: Date.now() + ttlMs,
+      updatedAt: Date.now(),
     }
     const next = JSON.stringify(entry)
     const prev = localStorage.getItem(PREFIX + key)
@@ -42,6 +44,17 @@ export function cacheGetStale<T>(key: string): T | null {
     if (!raw) return null
     const entry = JSON.parse(raw) as CacheEntry<T>
     return entry.value
+  } catch {
+    return null
+  }
+}
+
+export function cacheGetUpdatedAt(key: string): number | null {
+  try {
+    const raw = localStorage.getItem(PREFIX + key)
+    if (!raw) return null
+    const entry = JSON.parse(raw) as CacheEntry<unknown>
+    return entry.updatedAt ?? null
   } catch {
     return null
   }
