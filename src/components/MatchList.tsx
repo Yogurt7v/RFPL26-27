@@ -218,7 +218,13 @@ export function MatchList({ onPredict }: MatchListProps) {
       dayGroup.matches.push(match)
     }
 
-    return Array.from(roundMap.values())
+    // Сортируем дни по дате (от ранних к поздним)
+    const result = Array.from(roundMap.values())
+    for (const group of result) {
+      group.days.sort((a, b) => a.dateKey.localeCompare(b.dateKey))
+    }
+
+    return result
   }, [allMatches])
 
   const handleFavoriteClick = useCallback((matchId: string) => {
@@ -248,7 +254,7 @@ export function MatchList({ onPredict }: MatchListProps) {
       </div>
     )
   }
-
+  
   return (
     <div className="match-list">
       <div className="round-header">
@@ -346,7 +352,7 @@ export function MatchList({ onPredict }: MatchListProps) {
                     {day.matches.map((match, idx) => (
                       <div key={match.id} className="match-card-wrap" style={{ animationDelay: `${idx * 80}ms` }}>
                         <MatchCard
-                          matchId={match.id}
+                       matchId={match.id}
                           homeTeam={match.homeTeam}
                           awayTeam={match.awayTeam}
                           date={match.date}
