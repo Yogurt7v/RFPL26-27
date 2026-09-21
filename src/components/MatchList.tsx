@@ -95,12 +95,12 @@ export function MatchList({ onPredict }: MatchListProps) {
   const [sheetMatchId, setSheetMatchId] = useState<string | null>(null)
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
-  const initialRoundRef = useRef(1)
+  const [selectedRound, setSelectedRound] = useState<number>(1)
   const hasInitializedRef = useRef(false)
 
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const {  syncState } = useSyncStateQuery()
+  const { data: syncState } = useSyncStateQuery()
   const {
     isFavorite,
     toggleFavorite,
@@ -112,7 +112,7 @@ export function MatchList({ onPredict }: MatchListProps) {
   const selectedTeam = teamParam ?? ''
 
   // Получаем расписание из Supabase
-  const {  scheduleMatches = [], isLoading: isLoadingSchedule } = useQuery({
+  const { data: scheduleMatches = [], isLoading: isLoadingSchedule, error: scheduleError } = useQuery({
     queryKey: ['schedule'],
     queryFn: getSchedule,
     staleTime: 5 * 60 * 1000,
@@ -127,17 +127,15 @@ export function MatchList({ onPredict }: MatchListProps) {
     if (next) {
       setNextMatchId(next.id)
       const round = getRoundByMatchId(scheduleMatches, next.id)
-      if (round) initialRoundRef.current = round
+      if (round) setSelectedRound(round)
     } else {
-      initialRoundRef.current = getCurrentRound(scheduleMatches)
+      setSelectedRound(getCurrentRound(scheduleMatches))
     }
 
-    if (!roundParam && !teamParam && initialRoundRef.current) {
-      setSearchParams({ round: String(initialRoundRef.current) }, { replace: true })
+    if (!roundParam && !teamParam) {
+      setSearchParams({ round: String(selectedRound) }, { replace: true })
     }
-  }, [scheduleMatches, roundParam, teamParam, setSearchParams])
-
-  const selectedRound = roundParam ? Number(roundParam) : initialRoundRef.current
+  }, [scheduleMatches, roundParam, teamParam, setSearchParams, selectedRound])
 
   const setFilter = (params: { round?: number; team?: string }) => {
     const next = new URLSearchParams(searchParams)
@@ -153,15 +151,15 @@ export function MatchList({ onPredict }: MatchListProps) {
         next.delete('team')
         const generalNext = getNextMatch(scheduleMatches)
         setNextMatchId(generalNext?.id)
-        if (!next.has('round') && initialRoundRef.current) {
-          next.set('round', String(initialRoundRef.current))
+        if (!next.has('round') && selectedRound) {
+          next.set('round', String(selectedRound))
         }
       }
     }
     setSearchParams(next, { replace: true })
   }
 
-  const {  predictedKeys = new Set<string>() } = useQuery({
+  const { data: predictedKeys = new Set<string>() } = useQuery({
     queryKey: ['predictions', 'keys', user?.id],
     queryFn: () => getUserPredictedMatchKeys(user!.id),
     enabled: !!user?.id,
@@ -249,10 +247,22 @@ export function MatchList({ onPredict }: MatchListProps) {
     }
   }, [queryClient])
 
+  const liveCount = allMatches.filter(m => m.status === 'LIVE' || m.status === 'HALFTIME').length
+
   if (isLoadingSchedule) {
     return (
       <div className="match-list">
         <div className="match-list__loading">Загрузка расписания...</div>
+      </div>
+    )
+  }
+
+  if (scheduleError) {
+    return (
+      <div className="match-list">
+        <div className="match-list__error">
+          Ошибка загрузки расписания: {scheduleError.message}
+        </div>
       </div>
     )
   }
@@ -290,7 +300,7 @@ export function MatchList({ onPredict }: MatchListProps) {
             </option>
           ))}
         </select>
-        {(selectedTeam || selectedRound !== initialRoundRef.current) && (
+        {(selectedTeam || selectedRound !== 1) && (
           <button
             className="match-list__reset"
             onClick={() => {
@@ -344,7 +354,7 @@ export function MatchList({ onPredict }: MatchListProps) {
         ) : (
           groupedMatches.map(group => (
             <div key={group.label} className="match-list__group">
-              {(selectedTeam || selectedRound !== initialRoundRef.current) && (
+              {(selectedTeam || selectedRound !== 1) && (
                 <h3 className="match-list__date-header">{group.label}</h3>
               )}
               {group.days.map(day => (
