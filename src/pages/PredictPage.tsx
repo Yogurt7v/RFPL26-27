@@ -1,369 +1,136 @@
-import { useParams, useNavigate } from 'react-router-dom'
-import { useMemo } from 'react'
-import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
-import { PredictionForm, type PredictionFormData } from '../components/PredictionForm'
-import { savePrediction, deletePrediction, getPredictionForMatch, findMatchId, getMatchOtherPredictions, getCachedMatchOtherPredictions, type OtherPrediction, type SaveResult } from '../api/predictions'
-import { getResults, getCachedResults } from '../api/matches'
-import { getCachedPredictionDetail } from '../api/predictions'
-import { getStandings } from '../api/standings'
-import { getTeamLastResults } from '../lib/form'
-import { schedule, isMatchOpen } from '../lib/schedule'
-import { useAuth } from '../hooks/useAuth'
+import { useState, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { getSchedule } from '../api/matches'
+import { formatDate, formatWeekday } from '../lib/format'
+import { teams } from '../lib/teams'
+import { Spinner } from './Spinner'
 
-function isMatchFinished(matchDate: string, matchTime: string): boolean {
-  const start = new Date(`${matchDate}T${matchTime}:00+03:00`)
-  return Date.now() > start.getTime() + 2 * 60 * 60 * 1000
+interface MatchListProps {
+  onPredict?: (matchId: string) => void
 }
 
-export function PredictPage() {
-  const { matchId } = useParams<{ matchId: string }>()
-  const navigate = useNavigate()
-  const { user } = useAuth()
+export function MatchList({ onPredict }: MatchListProps) {
+  const [selectedRound, setSelectedRound] = useState<number | null>(null)
+  const [selectedTeam, setSelectedTeam] = useState<string>('')
 
-  const goBack = () => {
-    if (window.history.length > 1) navigate(-1)
-    else navigate('/')
-  }
-
-  const match = schedule.find(m => m.id === matchId)
-
-  const { data: existingPrediction, isLoading: isLoadingPrediction } = useQuery({
-    queryKey: ['predictions', 'detail', user?.id, match?.homeTeam, match?.awayTeam, match?.round],
-    queryFn: () => getPredictionForMatch(user!.id, match!.homeTeam, match!.awayTeam, match!.round),
-    enabled: !!user && !!match,
-    staleTime: 30_000,
-    initialData: (user && match) ? () => getCachedPredictionDetail(user.id, match.round, match.homeTeam, match.awayTeam) ?? undefined : undefined,
-    placeholderData: keepPreviousData,
+  const { data: matches = [], isLoading } = useQuery({
+    queryKey: ['schedule'],
+    queryFn: getSchedule,
+    staleTime: 5 * 60 * 1000, // 5 минут
   })
 
-  const { data: matchDbId } = useQuery({
-    queryKey: ['matches', 'db-id', match?.homeTeam, match?.awayTeam, match?.round],
-    queryFn: () => findMatchId(match!.homeTeam, match!.awayTeam, match!.round),
-    enabled: !!match && !isLoadingPrediction && !existingPrediction?.matchId,
-    staleTime: 30_000,
-  })
+  // Автоматически определяем текущий тур
+  const currentRound = useMemo(() => {
+    if (matches.length === 0) return 1
+    
+    const now = new Date()
+    const futureMatches = matches.filter(m => {
+      const matchDate = new Date(`${m.date}T${m.time}:00+03:00`)
+      return matchDate >= now
+    })
 
-  const resolvedMatchId = existingPrediction?.matchId ?? matchDbId ?? undefined
+    if (futureMatches.length === 0) {
+      return Math.max(...matches.map(m => m.round))
+    }
 
-  const { data: othersData } = useQuery({
-    queryKey: ['predictions', 'others', resolvedMatchId, user?.id],
-    queryFn: () => getMatchOtherPredictions(resolvedMatchId!, user!.id),
-    enabled: !!resolvedMatchId && !!user,
-    staleTime: 30_000,
-    initialData: (resolvedMatchId && user)
-      ? () => getCachedMatchOtherPredictions(resolvedMatchId, user.id) ?? undefined
-      : undefined,
-    placeholderData: keepPreviousData,
-  })
+    return Math.min(...futureMatches.map(m => m.round))
+  }, [matches])
 
-  const { data: allResults = [], isLoading: isLoadingResults } = useQuery({
-    queryKey: ['matches', 'results'],
-    queryFn: getResults,
-    staleTime: 15 * 60 * 1000,
-    initialData: getCachedResults,
-    placeholderData: keepPreviousData,
-  })
+  // Устанавливаем начальный тур
+  const effectiveRound = selectedRound ?? currentRound
 
-  const { data: standings = [] } = useQuery({
-    queryKey: ['standings'],
-    queryFn: getStandings,
-    staleTime: 5 * 60_000,
-  })
+  // Фильтруем матчи
+  const filteredMatches = useMemo(() => {
+    let result = matches
 
-  const homePosition = standings.find(s => s.teamName === match?.homeTeam)?.position
-  const awayPosition = standings.find(s => s.teamName === match?.awayTeam)?.position
+    if (selectedTeam) {
+      result = result.filter(m => m.homeTeam === selectedTeam || m.awayTeam === selectedTeam)
+    } else {
+      result = result.filter(m => m.round === effectiveRound)
+    }
 
-  const matchScores = useMemo(() => {
-    if (!match) return undefined
-    const r = allResults.find(
-      m => m.homeTeam === match.homeTeam && m.awayTeam === match.awayTeam && m.round === match.round
-    )
-    return r ? { home: r.homeScore, away: r.awayScore } : undefined
-  }, [allResults, match])
+    return result
+  }, [matches, effectiveRound, selectedTeam])
 
-  const homeForm = useMemo(
-    () => match ? getTeamLastResults(allResults, match.homeTeam) : [],
-    [allResults, match],
-  )
-  const awayForm = useMemo(
-    () => match ? getTeamLastResults(allResults, match.awayTeam) : [],
-    [allResults, match],
-  )
-
-  const initialValues: PredictionFormData | null = existingPrediction
-    ? {
-        predictedHomeScore: existingPrediction.predictedHomeScore,
-        predictedAwayScore: existingPrediction.predictedAwayScore,
-        outcome: (existingPrediction.outcome as '1' | 'X' | '2') || null,
-        homeGoalsThreshold: existingPrediction.homeGoalsThreshold,
-        awayGoalsThreshold: existingPrediction.awayGoalsThreshold,
+  // Группируем по датам
+  const groupedMatches = useMemo(() => {
+    const groups = new Map<string, typeof filteredMatches>()
+    
+    filteredMatches.forEach(match => {
+      const date = match.date
+      if (!groups.has(date)) {
+        groups.set(date, [])
       }
-    : null
+      groups.get(date)!.push(match)
+    })
 
-  const queryClient = useQueryClient()
+    return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b))
+  }, [filteredMatches])
 
-  const saveMutation = useMutation({
-    mutationFn: (prediction: PredictionFormData) =>
-      savePrediction(user!.id, match!.homeTeam, match!.awayTeam, match!.round, prediction),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['predictions'] })
-    },
-  })
-
-  const deleteMutation = useMutation({
-    mutationFn: () =>
-      deletePrediction(user!.id, match!.homeTeam, match!.awayTeam, match!.round),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['predictions'] })
-      goBack()
-    },
-  })
-
-  const handleSubmit = async (prediction: PredictionFormData): Promise<SaveResult> =>
-    saveMutation.mutateAsync(prediction)
-
-  if (!match) {
+  if (isLoading) {
     return (
-      <div className="page">
-        <p>Матч не найден</p>
-        <button onClick={goBack}>Назад к матчам</button>
-      </div>
-    )
-  }
-
-  if (!user) {
-    return (
-      <div className="page">
-        <p>Войдите, чтобы сделать прогноз</p>
-        <button onClick={() => navigate('/login')}>Войти</button>
-      </div>
-    )
-  }
-
-  if (isLoadingPrediction) {
-    return (
-      <div className="page">
-        <div className="check check--skeleton">
-          <div className="check__header">
-            <div className="skeleton" />
-          </div>
-          <div className="check__match">
-            <div className="check__teams">
-              <div className="check__team">
-                <div className="skeleton check__skeleton-logo" />
-                <div className="skeleton check__skeleton-team-name" />
-              </div>
-              <span className="check__vs">vs</span>
-              <div className="check__team check__team--right">
-                <div className="skeleton check__skeleton-team-name" />
-                <div className="skeleton check__skeleton-logo" />
-              </div>
-            </div>
-          </div>
-          <div className="check__skeleton-positions">
-            <div className="skeleton check__skeleton-position" />
-            <div className="skeleton check__skeleton-position" />
-          </div>
-          <div className="check__skeleton-form-dots">
-            <div className="check__skeleton-dots-row">
-              <div className="skeleton check__skeleton-dot" />
-              <div className="skeleton check__skeleton-dot" />
-              <div className="skeleton check__skeleton-dot" />
-              <div className="skeleton check__skeleton-dot" />
-              <div className="skeleton check__skeleton-dot" />
-            </div>
-            <div className="check__skeleton-dots-row">
-              <div className="skeleton check__skeleton-dot" />
-              <div className="skeleton check__skeleton-dot" />
-              <div className="skeleton check__skeleton-dot" />
-              <div className="skeleton check__skeleton-dot" />
-              <div className="skeleton check__skeleton-dot" />
-            </div>
-          </div>
-          <div className="check__divider" />
-          <div className="check__sections">
-            <div className="check__section">
-              <div className="check__section-label"><div className="skeleton" /></div>
-              <div className="check__skeleton-outcome">
-                <div className="skeleton" />
-                <div className="skeleton" />
-                <div className="skeleton" />
-              </div>
-            </div>
-            <div className="check__section">
-              <div className="check__section-label"><div className="skeleton" /></div>
-              <div className="check__skeleton-score">
-                <div className="skeleton" />
-                <span className="check__skeleton-score-sep">:</span>
-                <div className="skeleton" />
-              </div>
-            </div>
-            <div className="check__section">
-              <div className="check__section-label"><div className="skeleton" /></div>
-              <div className="check__skeleton-goals-row">
-                <div className="skeleton" />
-                <div className="skeleton" />
-                <div className="skeleton" />
-                <div className="skeleton" />
-              </div>
-              <div className="check__skeleton-goals-row">
-                <div className="skeleton" />
-                <div className="skeleton" />
-                <div className="skeleton" />
-                <div className="skeleton" />
-              </div>
-            </div>
-          </div>
-          <div className="check__footer">
-            <div className="skeleton check__skeleton-submit" />
-          </div>
-        </div>
-        <button
-          className="btn btn--secondary predict-page__back"
-          onClick={goBack}
-        >
-          Назад к матчам
-        </button>
-      </div>
-    )
-  }
-
-  const matchClosed = !isMatchOpen(match)
-  const finished = isMatchFinished(match.date, match.time)
-  const otherPredictions: OtherPrediction[] = othersData?.predictions ?? []
-  const otherCount = othersData?.count ?? 0
-  const otherNames = othersData?.usernames ?? []
-  const scores = matchScores ?? undefined
-
-  if (matchClosed) {
-    return (
-      <div className="page">
-        {initialValues ? (
-          <>
-            <PredictionForm
-              homeTeam={match.homeTeam}
-              awayTeam={match.awayTeam}
-              initialValues={initialValues}
-              onSubmit={handleSubmit}
-              onSaved={goBack}
-              isFinished={finished}
-              actualHomeScore={scores?.home ?? null}
-              actualAwayScore={scores?.away ?? null}
-              points={existingPrediction?.pointsEarned ?? null}
-              onDelete={deleteMutation.mutate}
-              homeForm={homeForm}
-              awayForm={awayForm}
-              homeFormLoading={isLoadingResults}
-              awayFormLoading={isLoadingResults}
-              homePosition={homePosition}
-              awayPosition={awayPosition}
-            />
-          </>
-        ) : (
-          <div className="predict-missed">
-            <div className="predict-missed__score">
-              <span>{match.homeTeam}</span>
-              {scores?.home != null && scores?.away != null && (
-                <span className="predict-missed__score-value">{scores.home}:{scores.away}</span>
-              )}
-              <span className="predict-missed__vs">vs</span>
-              <span>{match.awayTeam}</span>
-            </div>
-            <p className="predict-missed__text">Вы не сделали прогноз на этот матч.</p>
-          </div>
-         )}
-
-          <button
-            className="btn btn--secondary predict-page__back"
-            onClick={goBack}
-          >
-           Назад к матчам
-         </button>
-
-         {otherCount > 0 && !finished && (
-           <div className="predict-others">
-             <span className="predict-others__dot" />
-             <span>{otherNames.join(', ')} {otherCount === 1 ? 'сделал' : 'сделали'} прогноз</span>
-           </div>
-         )}
-
-          {otherCount > 0 && finished && (
-            <div className="predict-others-table">
-              <h3 className="predict-others-table__title">Прогнозы других игроков</h3>
-              <div className="predict-others-table__header">
-                <span>Игрок</span>
-                <span>Исход</span>
-                <span>Счёт</span>
-                <span>Порог</span>
-                <span>Очки</span>
-              </div>
-              {otherPredictions.map((p, i) => (
-                <div key={i} className="predict-others-table__row">
-                  <span className="predict-others-table__cell">{p.username}</span>
-                  <span className="predict-others-table__cell">
-                    {p.outcome ? (p.outcome === '1' ? 'П1' : p.outcome === 'X' ? 'Ничья' : 'П2') : '—'}
-                  </span>
-                  <span className="predict-others-table__cell">
-                    {p.predictedHomeScore != null && p.predictedAwayScore != null
-                      ? `${p.predictedHomeScore}:${p.predictedAwayScore}`
-                      : '—'}
-                  </span>
-                  <span className="predict-others-table__cell">
-                    {formatGoalsThreshold(p, match.homeTeam, match.awayTeam)}
-                  </span>
-                  <span className="predict-others-table__cell">{p.pointsEarned}</span>
-                </div>
-              ))}
-            </div>
-          )}
+      <div className="match-list">
+        <Spinner />
       </div>
     )
   }
 
   return (
-    <div className="page">
-      <PredictionForm
-        homeTeam={match.homeTeam}
-        awayTeam={match.awayTeam}
-        initialValues={initialValues}
-        onSubmit={handleSubmit}
-        onSaved={goBack}
-        canEdit
-        actualHomeScore={scores?.home ?? null}
-        actualAwayScore={scores?.away ?? null}
-        onDelete={deleteMutation.mutate}
-        homeForm={homeForm}
-        awayForm={awayForm}
-        homeFormLoading={isLoadingResults}
-        awayFormLoading={isLoadingResults}
-        homePosition={homePosition}
-        awayPosition={awayPosition}
-      />
-      <button
-        className="btn btn--secondary predict-page__back"
-        onClick={goBack}
-      >
-        Назад к матчам
-      </button>
-      {otherCount > 0 && (
-        <div className="predict-others">
-          <span className="predict-others__dot" />
-          <span>{otherNames.join(', ')} {otherCount === 1 ? 'сделал' : 'сделали'} прогноз</span>
+    <div className="match-list">
+      <div className="round-header">
+        <div className="round-header__round">
+          {selectedTeam ? selectedTeam : `Тур ${effectiveRound}`}
         </div>
-      )}
+        <div className="round-header__accent" />
+      </div>
+
+      <div className="match-list__filters">
+        {!selectedTeam && (
+          <select 
+            className="match-list__select" 
+            value={effectiveRound}
+            onChange={e => setSelectedRound(Number(e.target.value))}
+          >
+            {Array.from({ length: 30 }, (_, i) => (
+              <option key={i + 1} value={i + 1}>Тур {i + 1}</option>
+            ))}
+          </select>
+        )}
+        <select 
+          className="match-list__select" 
+          value={selectedTeam}
+          onChange={e => setSelectedTeam(e.target.value)}
+        >
+          <option value="">Все команды</option>
+          {teams.map(t => (
+            <option key={t.id} value={t.name}>{t.name}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="match-list__grid">
+        {groupedMatches.map(([date, dateMatches]) => (
+          <div key={date} className="match-list__date-group">
+            <div className="match-list__date-header">
+              {formatDate(date, 'short')}, {formatWeekday(date, 'short')}
+            </div>
+            {dateMatches.map(match => (
+              <div key={match.id} className="match-card-wrap">
+                <div className="match-card" onClick={() => onPredict?.(match.id)}>
+                  <div className="match-card__date">
+                    {match.time}
+                  </div>
+                  <div className="match-card__teams">
+                    <span className="match-card__team match-card__team--home">{match.homeTeam}</span>
+                    <span className="match-card__vs">vs</span>
+                    <span className="match-card__team match-card__team--away">{match.awayTeam}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
-
-function formatGoalsThreshold(
-  p: OtherPrediction,
-  homeTeam: string,
-  awayTeam: string
-): string {
-  const parts: string[] = []
-  if (p.homeGoalsThreshold != null) parts.push(`${homeTeam} ≥ ${p.homeGoalsThreshold}`)
-  if (p.awayGoalsThreshold != null) parts.push(`${awayTeam} ≥ ${p.awayGoalsThreshold}`)
-  return parts.length > 0 ? parts.join(', ') : '—'
-}
-
-export default PredictPage
