@@ -30,7 +30,7 @@ export function PredictPage() {
 
   const match = matches.find(m => m.id === matchId)
 
-  const {  existingPrediction, isLoading: isLoadingPrediction } = useQuery({
+  const { data: existingPrediction, isLoading: isLoadingPrediction } = useQuery({
     queryKey: ['predictions', 'detail', user?.id, match?.homeTeam, match?.awayTeam, match?.round],
     queryFn: () => getPredictionForMatch(user!.id, match!.homeTeam, match!.awayTeam, match!.round),
     enabled: !!user && !!match,
@@ -46,7 +46,7 @@ export function PredictPage() {
 
   // Загружаем ставки других игроков для завершённых матчей
   const matchIdNum = match ? parseInt(match.id) : null
-  const {  otherPredictions } = useQuery({
+  const { data: otherPredictions } = useQuery({
     queryKey: ['predictions', 'other', matchIdNum, user?.id],
     queryFn: () => getMatchOtherPredictions(matchIdNum!, user!.id),
     enabled: !!matchIdNum && !!user?.id && !isMatchOpen(match!),
@@ -135,8 +135,6 @@ export function PredictPage() {
         actualAwayScore={matchResult?.awayScore ?? null}
         points={existingPrediction?.pointsEarned ?? null}
         onDelete={deleteMutation.mutate}
-        otherPredictions={otherPredictions?.predictions ?? []}
-        otherPredictionsCount={otherPredictions?.count ?? 0}
       />
       <button className="btn btn--secondary predict-page__back" onClick={goBack}>
         Назад к матчам
