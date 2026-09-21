@@ -134,12 +134,9 @@ export function MatchList({ onPredict }: MatchListProps) {
 
     // Устанавливаем начальный тур в URL только если его там нет
     if (!roundParam && !teamParam && initialRoundRef.current) {
-      const currentParams = new URLSearchParams(searchParams)
-      if (currentParams.get('round') !== String(initialRoundRef.current)) {
         setSearchParams({ round: String(initialRoundRef.current) }, { replace: true })
-      }
     }
-  }, [scheduleMatches, roundParam, teamParam, setSearchParams, searchParams])
+  },  [scheduleMatches, roundParam, teamParam, setSearchParams])
 
   const selectedRound = roundParam ? Number(roundParam) : initialRoundRef.current
 
