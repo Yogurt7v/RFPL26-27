@@ -4,7 +4,6 @@ import { getUserPredictions, getCachedUserPredictions, type UserPrediction } fro
 import { getTeamByName } from '../lib/teams'
 import { formatScore, formatDate } from '../lib/format'
 import { GlassCard } from './GlassCard'
-import { schedule } from '../lib/schedule'
 import { DataStatusChip } from './DataStatusChip'
 
 function formatGoalsThreshold(pred: UserPrediction): string {
@@ -12,11 +11,6 @@ function formatGoalsThreshold(pred: UserPrediction): string {
   if (pred.homeGoalsThreshold != null) parts.push(`${pred.homeTeam} ≥ ${pred.homeGoalsThreshold}`)
   if (pred.awayGoalsThreshold != null) parts.push(`${pred.awayTeam} ≥ ${pred.awayGoalsThreshold}`)
   return parts.length > 0 ? parts.join(', ') : '—'
-}
-
-function getMatchSlug(homeTeam: string, awayTeam: string): string | undefined {
-  const m = schedule.find(s => s.homeTeam === homeTeam && s.awayTeam === awayTeam)
-  return m?.id
 }
 
 function formatPrediction(pred: UserPrediction): string {
@@ -101,7 +95,7 @@ export function PredictionResults({ userId }: PredictionResultsProps) {
         {predictions.map(pred => {
           const home = getTeamByName(pred.homeTeam)
           const away = getTeamByName(pred.awayTeam)
-          const matchSlug = getMatchSlug(pred.homeTeam, pred.awayTeam)
+          const matchSlug = String(pred.matchId)
           const predicted = formatPrediction(pred)
           const actual = pred.actualHomeScore != null && pred.actualAwayScore != null
             ? formatScore(pred.actualHomeScore, pred.actualAwayScore)

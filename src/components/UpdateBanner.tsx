@@ -1,7 +1,7 @@
 import { usePWAUpdate } from '../hooks/usePWAUpdate'
 
 export function UpdateBanner() {
-  const { needRefresh, update, dismiss } = usePWAUpdate()
+  const { needRefresh, update } = usePWAUpdate()
 
   if (!needRefresh) return null
 

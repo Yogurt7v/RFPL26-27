@@ -42,10 +42,13 @@ export function calculatePoints(
     points = SCORING.EXACT_SCORE + SCORING.OUTCOME
   } else {
     if (hasScore) {
+      const home = prediction.predictedHomeScore
+      const away = prediction.predictedAwayScore
+      if (home == null || away == null) return -1
       const predictedOutcome: Outcome =
-        prediction.predictedHomeScore > prediction.predictedAwayScore
+        home > away
           ? '1'
-          : prediction.predictedHomeScore === prediction.predictedAwayScore
+          : home === away
             ? 'X'
             : '2'
 

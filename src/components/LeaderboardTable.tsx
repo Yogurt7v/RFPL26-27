@@ -1,5 +1,5 @@
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
-import { getLeaderboard, getCachedLeaderboard, type LeaderboardEntry } from '../api/leaderboard'
+import { getLeaderboard, getCachedLeaderboard } from '../api/leaderboard'
 import { DataStatusChip } from './DataStatusChip'
 
 interface LeaderboardTableProps {

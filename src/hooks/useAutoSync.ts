@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
-import { schedule } from '../lib/schedule'
+import { useQuery, keepPreviousData, useQueryClient } from '@tanstack/react-query'
+import { getSchedule, getCachedSchedule } from '../api/matches'
 import { useSyncStateQuery } from './useSyncState'
 
 const STALE_DEFAULT_MS = 60 * 60_000
@@ -9,15 +9,6 @@ const RETRY_COOLDOWN_MS = 2 * 60_000
 
 function moscowDateStr(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Moscow' }).format(new Date())
-}
-
-function isMatchDay(): boolean {
-  const today = moscowDateStr()
-  return schedule.some(m => m.date === today)
-}
-
-function getStaleThresholdMs(): number {
-  return isMatchDay() ? STALE_MATCHDAY_MS : STALE_DEFAULT_MS
 }
 
 // Автосинк «по требованию посетителей»: пока сайт открыт, данные в БД
@@ -30,11 +21,22 @@ export function useAutoSync() {
   const lastAttemptRef = useRef(0)
   const { data: syncState } = useSyncStateQuery()
 
+  const { data: scheduleMatches = [] } = useQuery({
+    queryKey: ['schedule'],
+    queryFn: getSchedule,
+    staleTime: 5 * 60 * 1000,
+    initialData: getCachedSchedule,
+    placeholderData: keepPreviousData,
+  })
+
+  const isMatchDay = scheduleMatches.some(m => m.date === moscowDateStr())
+  const staleThresholdMs = isMatchDay ? STALE_MATCHDAY_MS : STALE_DEFAULT_MS
+
   useEffect(() => {
     if (syncState === undefined || syncState.inProgress) return
 
     const lastSuccess = syncState.lastSuccessAt ?? 0
-    if (Date.now() - lastSuccess < getStaleThresholdMs()) return
+    if (Date.now() - lastSuccess < staleThresholdMs) return
     if (Date.now() - lastAttemptRef.current < RETRY_COOLDOWN_MS) return
     if (inFlight.current) return
     inFlight.current = true
@@ -66,5 +68,5 @@ export function useAutoSync() {
     return () => {
       mounted = false
     }
-  }, [syncState, queryClient])
+  }, [syncState, queryClient, staleThresholdMs])
 }

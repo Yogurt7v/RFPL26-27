@@ -5,7 +5,7 @@ import { useLiveMatches } from '../hooks/useLiveMatches'
 import { useFavorites } from '../hooks/useFavorites'
 import { useAuth } from '../hooks/useAuth'
 import { useScrollToElement } from '../hooks/useScrollToElement'
-import { getSchedule, type ScheduleEntry } from '../api/matches'
+import { getSchedule, getCachedSchedule, type ScheduleEntry } from '../api/matches'
 import { teams } from '../lib/teams'
 import { formatDate, formatWeekday } from '../lib/format'
 import { MatchCard } from './MatchCard'
@@ -100,7 +100,7 @@ export function MatchList({ onPredict }: MatchListProps) {
 
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const {  syncState } = useSyncStateQuery()
+  const { data: syncState } = useSyncStateQuery()
   const {
     isFavorite,
     toggleFavorite,
@@ -112,10 +112,16 @@ export function MatchList({ onPredict }: MatchListProps) {
   const selectedTeam = teamParam ?? ''
 
   // Получаем расписание из Supabase
-  const {  scheduleMatches = [], isLoading: isLoadingSchedule, error: scheduleError } = useQuery({
+  const {
+    data: scheduleMatches = [],
+    isLoading: isLoadingSchedule,
+    error: scheduleError,
+  } = useQuery({
     queryKey: ['schedule'],
     queryFn: getSchedule,
     staleTime: 5 * 60 * 1000,
+    initialData: getCachedSchedule,
+    placeholderData: keepPreviousData,
   })
 
   // Определяем начальный тур
@@ -162,7 +168,7 @@ export function MatchList({ onPredict }: MatchListProps) {
     setSearchParams(next, { replace: true })
   }
 
-  const {  predictedKeys = new Set<string>() } = useQuery({
+  const { data: predictedKeys = new Set<string>() } = useQuery({
     queryKey: ['predictions', 'keys', user?.id],
     queryFn: () => getUserPredictedMatchKeys(user!.id),
     enabled: !!user?.id,
@@ -250,8 +256,6 @@ export function MatchList({ onPredict }: MatchListProps) {
     }
   }, [queryClient])
 
-  const liveCount = allMatches.filter(m => m.status === 'LIVE' || m.status === 'HALFTIME').length
-
   if (isLoadingSchedule) {
     return (
       <div className="match-list">
@@ -303,7 +307,7 @@ export function MatchList({ onPredict }: MatchListProps) {
             </option>
           ))}
         </select>
-        {(selectedTeam || selectedRound !== 1) && (
+        {(selectedTeam || selectedRound !== initialRoundRef.current) && (
           <button
             className="match-list__reset"
             onClick={() => {
@@ -357,7 +361,7 @@ export function MatchList({ onPredict }: MatchListProps) {
         ) : (
           groupedMatches.map(group => (
             <div key={group.label} className="match-list__group">
-              {(selectedTeam || selectedRound !== 1) && (
+              {(selectedTeam || selectedRound !== initialRoundRef.current) && (
                 <h3 className="match-list__date-header">{group.label}</h3>
               )}
               {group.days.map(day => (

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { getStandings, getCachedStandings, type Standing } from '../api/standings'
+import { getStandings, getCachedStandings } from '../api/standings'
 import { getTeamByName } from '../lib/teams'
 import { DataStatusChip } from './DataStatusChip'
 

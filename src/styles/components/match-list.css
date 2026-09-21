@@ -135,6 +135,18 @@
   color: var(--color-text-secondary);
 }
 
+.match-list__loading,
+.match-list__error {
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.match-list__error {
+  color: var(--color-error);
+}
+
 .match-list__group {
   margin-bottom: var(--spacing-lg);
 }

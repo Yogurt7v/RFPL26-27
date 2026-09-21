@@ -125,13 +125,6 @@ export function PredictionForm({
       ? 'Выберите счёт обеих команд'
       : null
 
-  const formatGoalsSummary = () => {
-    const parts: string[] = []
-    if (homeGoalsThreshold !== '') parts.push(`${homeTeam} ≥ ${homeGoalsThreshold}`)
-    if (awayGoalsThreshold !== '') parts.push(`${awayTeam} ≥ ${awayGoalsThreshold}`)
-    return parts.length > 0 ? parts.join(', ') : '—'
-  }
-
   /* ─── Saved state ──────────────────────── */
   if (isSaved) {
     const isOutcomeCorrect = isFinished && (

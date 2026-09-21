@@ -102,7 +102,7 @@ export async function getPredictionForMatch(
   logQueryError('getPredictionForMatch', error)
   if (!data) return null
 
-  const match = data.matches as Record<string, unknown> | null
+  const match = data.matches as unknown as Record<string, unknown> | null
 
   const result: PredictionData = {
     matchId: match?.id as number | undefined,
@@ -142,12 +142,17 @@ export type SaveResult =
   | { ok: true }
   | { ok: false; reason: 'not-open' | 'not-found' | 'error' }
 
+export type PredictionInput = Pick<
+  PredictionData,
+  'predictedHomeScore' | 'predictedAwayScore' | 'outcome' | 'homeGoalsThreshold' | 'awayGoalsThreshold'
+>
+
 export async function savePrediction(
   userId: string,
   homeTeam: string,
   awayTeam: string,
   round: number,
-  prediction: PredictionData
+  prediction: PredictionInput
 ): Promise<SaveResult> {
   const { data, error } = await withRetry(() =>
     supabase.rpc('save_prediction', {

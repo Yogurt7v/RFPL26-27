@@ -3,8 +3,8 @@ import { useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { PredictionForm, type PredictionFormData } from '../components/PredictionForm'
 import { savePrediction, deletePrediction, getPredictionForMatch, getMatchOtherPredictions, type OtherPrediction, type SaveResult } from '../api/predictions'
-import { getResults, getCachedResults, getSchedule, type ScheduleEntry } from '../api/matches'
-import { getStandings } from '../api/standings'
+import { getResults, getCachedResults, getSchedule, getCachedSchedule, type ScheduleEntry, type ResultEntry } from '../api/matches'
+import { getStandings, type Standing } from '../api/standings'
 import { getTeamLastResults } from '../lib/form'
 import { useAuth } from '../hooks/useAuth'
 
@@ -29,10 +29,15 @@ export function PredictPage() {
   }
 
   // Получаем расписание из Supabase
-  const { data: matches = [] } = useQuery({
+  const {
+    data: matches = [],
+    isLoading: isLoadingSchedule,
+  } = useQuery({
     queryKey: ['schedule'],
     queryFn: getSchedule,
     staleTime: 5 * 60 * 1000,
+    initialData: getCachedSchedule,
+    placeholderData: keepPreviousData,
   })
 
   const match = matches.find((m: ScheduleEntry) => m.id === matchId)
@@ -69,13 +74,13 @@ export function PredictPage() {
     staleTime: 5 * 60_000,
   })
 
-  const homePosition = standings.find((s: any) => s.teamName === match?.homeTeam)?.position
-  const awayPosition = standings.find((s: any) => s.teamName === match?.awayTeam)?.position
+  const homePosition = standings.find((s: Standing) => s.teamName === match?.homeTeam)?.position
+  const awayPosition = standings.find((s: Standing) => s.teamName === match?.awayTeam)?.position
 
   const matchScores = useMemo(() => {
     if (!match) return undefined
     const r = allResults.find(
-      (m: any) => m.homeTeam === match.homeTeam && m.awayTeam === match.awayTeam && m.round === match.round
+      (m: ResultEntry) => m.homeTeam === match.homeTeam && m.awayTeam === match.awayTeam && m.round === match.round
     )
     return r ? { home: r.homeScore, away: r.awayScore } : undefined
   }, [allResults, match])
@@ -103,7 +108,7 @@ export function PredictPage() {
 
   const saveMutation = useMutation({
     mutationFn: (prediction: PredictionFormData) =>
-      savePrediction(user!.id, match!.homeTeam, match!.awayTeam, match!.round, prediction as any),
+      savePrediction(user!.id, match!.homeTeam, match!.awayTeam, match!.round, prediction),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['predictions'] })
     },
@@ -120,6 +125,20 @@ export function PredictPage() {
 
   const handleSubmit = async (prediction: PredictionFormData): Promise<SaveResult> =>
     saveMutation.mutateAsync(prediction)
+
+  if (isLoadingSchedule && !match) {
+    return (
+      <div className="page">
+        <div className="match-list__loading">Загрузка расписания...</div>
+        <button
+          className="btn btn--secondary predict-page__back"
+          onClick={goBack}
+        >
+          Назад к матчам
+        </button>
+      </div>
+    )
+  }
 
   if (!match) {
     return (

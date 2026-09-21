@@ -54,7 +54,7 @@ export function LoginPage() {
     null
   )
 
-  const [, registerFormAction, registerPending] = useActionState(
+  const [, , registerPending] = useActionState(
     async (_prev: string | null, formData: FormData) => {
       const username = formData.get('username') as string
       const password = formData.get('password') as string

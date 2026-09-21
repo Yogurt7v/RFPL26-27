@@ -76,33 +76,43 @@ export function getCachedResults(): ResultEntry[] | undefined {
 }
 
 export async function getSchedule(): Promise<ScheduleEntry[]> {
-  const { data, error } = await withRetry(() =>
-    supabase
-      .from('matches')
-      .select('id, round, home_team, away_team, match_date, stadium_name')
-      .order('round', { ascending: true })
-      .order('id', { ascending: true })
-  )
+  try {
+    const { data, error } = await withRetry(() =>
+      supabase
+        .from('matches')
+        .select('id, round, home_team, away_team, match_date, stadium_name')
+        .order('round', { ascending: true })
+        .order('id', { ascending: true })
+    )
 
-  if (error) {
-    throw new Error(`Error fetching schedule: ${error.message}`)
-  }
-
-  const schedule = (data as Record<string, unknown>[]).map(row => {
-    const { date, time } = parseDateTime((row.match_date as string) || '')
-    return {
-      id: String(row.id as number),
-      round: row.round as number,
-      homeTeam: row.home_team as string,
-      awayTeam: row.away_team as string,
-      date,
-      time,
-      stadium: row.stadium_name as string | undefined,
+    if (error) {
+      throw new Error(`Error fetching schedule: ${error.message}`)
     }
-  })
 
-  cacheSet(SCHEDULE_CACHE_KEY, schedule, SCHEDULE_CACHE_TTL)
-  return schedule
+    const schedule = (data as Record<string, unknown>[]).map(row => {
+      const { date, time } = parseDateTime((row.match_date as string) || '')
+      return {
+        id: String(row.id as number),
+        round: row.round as number,
+        homeTeam: row.home_team as string,
+        awayTeam: row.away_team as string,
+        date,
+        time,
+        stadium: row.stadium_name as string | undefined,
+      }
+    })
+
+    cacheSet(SCHEDULE_CACHE_KEY, schedule, SCHEDULE_CACHE_TTL)
+    clearDataStale(SCHEDULE_CACHE_KEY)
+    return schedule
+  } catch {
+    const stale = cacheGetStale<ScheduleEntry[]>(SCHEDULE_CACHE_KEY)
+    if (stale) {
+      markDataStale(SCHEDULE_CACHE_KEY)
+      return stale
+    }
+    throw new Error('Error fetching schedule: network error and no cached data')
+  }
 }
 
 export async function getResults(): Promise<ResultEntry[]> {

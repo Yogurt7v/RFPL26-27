@@ -50,7 +50,7 @@ function parseDate(dateStr) {
 
 // ── Parsers (ported from src/api/matches.ts, live.ts, standings.ts) ──
 
-function parseGameBlock(block, roundNumber) {
+function parseGameBlock(block, roundNumber, deltaMs = 0) {
   const htIdMatch = block.match(/dt-ht="(\d+)"/)
   const atIdMatch = block.match(/dt-at="(\d+)"/)
   if (!htIdMatch || !atIdMatch) return null
@@ -59,14 +59,18 @@ function parseGameBlock(block, roundNumber) {
   const away = teamName(parseInt(atIdMatch[1]))
   if (!home || !away) return null
 
+  // Абсолютное время из ld+json (со смещением +03:00), не зависит от
+  // таймзоны, в которой soccer365 рендерит страницу запросившему IP.
+  const startDateMatch = block.match(/"startDate":"([^"]+)"/)
+  const startDate = startDateMatch ? startDateMatch[1] : null
+
   const statusMatch = block.match(
     /<div class="status"><span[^>]*>([\s\S]*?)<\/span><\/div>/
   )
-  if (!statusMatch) return null
+  // Без ld+json и без статуса блок не разобрать
+  if (!startDate && !statusMatch) return null
 
-  const statusText = statusMatch[1].trim()
-
-  const TIME_RE = /^\d{1,2}:\d{2}$/
+  const statusText = statusMatch ? statusMatch[1].trim() : ''
 
   let date, time
 
@@ -102,10 +106,23 @@ function parseGameBlock(block, roundNumber) {
     }
   }
 
+  // Без startDate время берём из statusText. Он рендерится под гео IP
+  // запрашивающего (Vercel из США → −7/−8ч от Москвы), поэтому компенсируем
+  // сдвиг deltaMs, вычисленный по стартовым блокам страницы (см. ниже).
+  let matchDate
+  if (startDate) {
+    matchDate = startDate
+  } else {
+    const naiveMs = new Date(`${date}T${time}:00+03:00`).getTime()
+    matchDate = Number.isFinite(naiveMs)
+      ? new Date(naiveMs + deltaMs).toISOString()
+      : `${date}T${time}:00+03:00`
+  }
+
   return {
     home_team: home,
     away_team: away,
-    match_date: `${date}T${time}:00+03:00`,
+    match_date: matchDate,
     status,
     home_score: homeScore ?? null,
     away_score: awayScore ?? null,
@@ -113,9 +130,44 @@ function parseGameBlock(block, roundNumber) {
   }
 }
 
-function parseMatchesFromHTML(html) {
+const TIME_RE = /^\d{1,2}:\d{2}$/
+
+function computeTzDeltaMs(html) {
+  // Самокалибровка таймзоны: реальное время (startDate) минус сырое время
+  // (statusText как +03) даёт сдвиг, под который рендерит страницу IP-гео.
+  // Достаточно одного стартового блока — сдвиг один на всю страницу.
+  let deltaMs = 0
+  const sections = html.split(/(?=<div class="cmp_stg_ttl">)/)
+
+  for (const section of sections) {
+    const blocks = section.split(/<div class="game_block /).slice(1)
+    for (const raw of blocks) {
+      const block = '<div class="game_block ' + raw
+      const startDateMatch = block.match(/"startDate":"([^"]+)"/)
+      const statusMatch = block.match(
+        /<div class="status"><span[^>]*>([\s\S]*?)<\/span><\/div>/
+      )
+      if (!startDateMatch || !statusMatch) continue
+      const statusText = statusMatch[1].trim()
+      if (!statusText.includes(',')) continue
+      const [datePart, timePart] = statusText.split(',').map(s => s.trim())
+      if (!TIME_RE.test(timePart)) continue
+
+      const trueMs = new Date(startDateMatch[1]).getTime()
+      const naiveMs = new Date(`${parseDate(datePart)}T${timePart}:00+03:00`).getTime()
+      if (Number.isFinite(trueMs) && Number.isFinite(naiveMs)) {
+        return trueMs - naiveMs
+      }
+    }
+  }
+
+  return deltaMs
+}
+
+function parseMatchesFromHTML(html, deltaMs) {
   const matches = []
   const sections = html.split(/(?=<div class="cmp_stg_ttl">)/)
+  const rawBlocks = []
 
   for (const section of sections) {
     const roundMatch = section.match(
@@ -127,12 +179,18 @@ function parseMatchesFromHTML(html) {
     const gameBlocks = section.split(/<div class="game_block /)
 
     for (let i = 1; i < gameBlocks.length; i++) {
-      const m = parseGameBlock(
-        '<div class="game_block ' + gameBlocks[i],
-        roundNumber
-      )
-      if (m) matches.push(m)
+      rawBlocks.push({
+        block: '<div class="game_block ' + gameBlocks[i],
+        roundNumber,
+      })
     }
+  }
+
+  if (deltaMs === undefined) deltaMs = computeTzDeltaMs(html)
+
+  for (const { block, roundNumber } of rawBlocks) {
+    const m = parseGameBlock(block, roundNumber, deltaMs)
+    if (m) matches.push(m)
   }
 
   return matches
@@ -343,7 +401,10 @@ export default async function handler(req, res) {
     if (livePage.status === 'rejected') errors.push(`Live fetch error: ${livePage.reason.message}`)
 
     const scheduleMatches = scheduleHtml ? parseMatchesFromHTML(scheduleHtml) : []
-    const resultMatches = resultsHtml ? parseMatchesFromHTML(resultsHtml) : []
+    // Таймзона рендера одна для всех страниц сайта с одного IP; результаты
+    // ld+json не содержат, поэтому передаём им сдвиг, посчитанный по расписанию.
+    const tzDeltaMs = computeTzDeltaMs(scheduleHtml ?? '')
+    const resultMatches = resultsHtml ? parseMatchesFromHTML(resultsHtml, tzDeltaMs) : []
     const liveScores = liveHtml ? parseLiveScoresFromHTML(liveHtml) : []
     log.push(`Parsed ${scheduleMatches.length} scheduled, ${resultMatches.length} finished, ${liveScores.length} live`)
 

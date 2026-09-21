@@ -15,7 +15,6 @@ const StandingsPage = lazy(() => import('./pages/StandingsPage'))
 const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'))
 const PredictPage = lazy(() => import('./pages/PredictPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
-const TestScoringPage = lazy(() => import('./pages/TestScoringPage'))
 
 const pageFallback = (
   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
@@ -39,11 +38,6 @@ function App() {
                 <Route path="/reset-password" element={
                   <ErrorBoundary>
                     <ResetPasswordPage />
-                  </ErrorBoundary>
-                } />
-                <Route path="/test-scoring" element={
-                  <ErrorBoundary>
-                    <TestScoringPage />
                   </ErrorBoundary>
                 } />
                 <Route

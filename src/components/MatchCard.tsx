@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { getTeamByName } from '../lib/teams'
-import { formatDate, formatWeekday } from '../lib/format'
+import { formatWeekday } from '../lib/format'
 import { GlassCard } from './GlassCard'
 
 interface Starlet {
@@ -31,7 +31,6 @@ interface MatchCardProps {
 }
 
 export function MatchCard({
-  matchId,
   homeTeam,
   awayTeam,
   date,
@@ -58,7 +57,7 @@ export function MatchCard({
 
   const handleStarToggle = (e: React.MouseEvent) => {
     e.stopPropagation()
-    onFavoriteToggle()
+    onFavoriteToggle?.()
     setStarAnimating(true)
     setTimeout(() => setStarAnimating(false), 300)
   }

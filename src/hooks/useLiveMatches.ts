@@ -13,7 +13,7 @@ export function useLiveMatches(
   selectedTeam: string
 ): { matches: Match[]; loaded: boolean; isFetching: boolean } {
   const scheduleQuery = useQuery({
-    queryKey: ['matches', 'schedule'],
+    queryKey: ['schedule'],
     queryFn: getSchedule,
     staleTime: 24 * 60 * 60 * 1000,
     initialData: getCachedSchedule,
