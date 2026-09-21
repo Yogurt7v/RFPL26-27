@@ -318,31 +318,40 @@ function parseStandingsFromHTML(html) {
 
 const FETCH_TIMEOUT_MS = 20_000
 
-async function fetchHtml(path) {
+async function fetchHtml(path, timeoutMs = FETCH_TIMEOUT_MS) {
   const url = `https://soccer365.ru${path}`
-  const response = await fetch(url, {
-    headers: {
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36',
-      'Referer': 'https://soccer365.ru/',
-    },
-  })
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36',
+        'Referer': 'https://soccer365.ru/',
+      },
+    })
 
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status} for ${path}`)
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status} for ${path}`)
+    }
+
+    return stripScripts(await response.text())
+  } finally {
+    clearTimeout(timer)
   }
-
-  return stripScripts(await response.text())
 }
 
 async function fetchHtmlWithTimeout(path) {
-  return Promise.race([
-    fetchHtml(path),
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error(`Timeout ${FETCH_TIMEOUT_MS}ms for ${path}`)), FETCH_TIMEOUT_MS)
-    ),
-  ])
+  try {
+    return await fetchHtml(path)
+  } catch (err) {
+    if (err.name === 'AbortError' || err.name === 'TimeoutError') {
+      throw new Error(`Timeout ${FETCH_TIMEOUT_MS}ms for ${path}`)
+    }
+    throw err
+  }
 }
 
 // ── Main handler ───────────────────────────────────────────────────────
