@@ -6,6 +6,7 @@ import { getResults, getCachedResults, getSchedule, type ScheduleEntry } from '.
 import { useAuth } from '../hooks/useAuth'
 import type { SaveResult } from '../api/predictions'
 
+// Вспомогательная функция для проверки, не начался ли матч
 function isMatchOpen(match: ScheduleEntry): boolean {
   const matchStart = new Date(`${match.date}T${match.time}:00+03:00`)
   return Date.now() < matchStart.getTime()
@@ -102,6 +103,7 @@ export function PredictPage() {
         awayGoalsThreshold: existingPrediction.awayGoalsThreshold,
       }
     : null
+
   const matchClosed = !isMatchOpen(match)
 
   return (
