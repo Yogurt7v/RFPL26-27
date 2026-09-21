@@ -1,76 +1,250 @@
-import { useState, useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { getSchedule } from '../api/matches'
-import { formatDate, formatWeekday } from '../lib/format'
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
+import { useLiveMatches } from '../hooks/useLiveMatches'
+import { useFavorites } from '../hooks/useFavorites'
+import { useAuth } from '../hooks/useAuth'
+import { useScrollToElement } from '../hooks/useScrollToElement'
+import { getSchedule, type ScheduleEntry } from '../api/matches'
 import { teams } from '../lib/teams'
-import { Spinner } from './Spinner'
+import { formatDate, formatWeekday } from '../lib/format'
+import { MatchCard } from './MatchCard'
+import { FavoriteSheet } from './FavoriteSheet'
+import { getUserPredictedMatchKeys, getCachedPredictedKeys } from '../api/predictions'
+import { triggerSync } from '../api/sync'
+import { DataStatusChip } from './DataStatusChip'
+import { useSyncStateQuery, SYNC_STATE_QUERY_KEY } from '../hooks/useSyncState'
+
+// Вспомогательные функции для работы с расписанием
+const MATCH_DURATION_MS = 120 * 60 * 1000
+
+function getMatchStartTime(match: ScheduleEntry): Date {
+  return new Date(`${match.date}T${match.time}:00+03:00`)
+}
+
+function findNextMatch(matches: ScheduleEntry[]): ScheduleEntry | undefined {
+  const now = Date.now()
+  return matches.find(m => now < getMatchStartTime(m).getTime() + MATCH_DURATION_MS)
+}
+
+function getNextMatch(matches: ScheduleEntry[]): ScheduleEntry | undefined {
+  return findNextMatch(matches)
+}
+
+function getMatchesByTeam(matches: ScheduleEntry[], teamName: string): ScheduleEntry[] {
+  return matches.filter(m => m.homeTeam === teamName || m.awayTeam === teamName)
+}
+
+function getRoundByMatchId(matches: ScheduleEntry[], matchId: string): number | undefined {
+  const match = matches.find(m => m.id === matchId)
+  return match?.round
+}
+
+function getCurrentRound(matches: ScheduleEntry[]): number {
+  const next = getNextMatch(matches)
+  if (next) return next.round
+  if (matches.length === 0) return 1
+  return Math.max(...matches.map(m => m.round))
+}
 
 interface MatchListProps {
   onPredict?: (matchId: string) => void
 }
 
-export function MatchList({ onPredict }: MatchListProps) {
-  const [selectedRound, setSelectedRound] = useState<number | null>(null)
-  const [selectedTeam, setSelectedTeam] = useState<string>('')
+interface DisplayMatch {
+  id: string
+  round: number
+  homeTeam: string
+  awayTeam: string
+  date: string
+  time: string
+  stadium?: string
+  homeScore?: number
+  awayScore?: number
+  status: 'SCHEDULED' | 'LIVE' | 'FINISHED' | 'HALFTIME'
+}
 
-  const { data: matches = [], isLoading } = useQuery({
+interface RoundGroup {
+  label: string
+  days: {
+    dateKey: string
+    dateLabel: string
+    matches: DisplayMatch[]
+  }[]
+}
+
+function scheduleToMatch(m: ScheduleEntry): DisplayMatch {
+  return { 
+    ...m, 
+    homeScore: undefined, 
+    awayScore: undefined, 
+    status: 'SCHEDULED'
+  }
+}
+
+const rounds = Array.from({ length: 30 }, (_, i) => ({
+  number: i + 1,
+  label: `Тур ${i + 1}`,
+}))
+
+export function MatchList({ onPredict }: MatchListProps) {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const roundParam = searchParams.get('round')
+  const teamParam = searchParams.get('team')
+  const [nextMatchId, setNextMatchId] = useState<string | undefined>()
+  const [sheetMatchId, setSheetMatchId] = useState<string | null>(null)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [syncError, setSyncError] = useState<string | null>(null)
+  const initialRoundRef = useRef(1)
+  const hasInitializedRef = useRef(false)
+
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
+  const { data: syncState } = useSyncStateQuery()
+  const {
+    isFavorite,
+    toggleFavorite,
+    favoriteCount,
+    starlets,
+    glowLevel,
+  } = useFavorites()
+
+  const selectedTeam = teamParam ?? ''
+
+  const { data: scheduleMatches = [], isLoading: isLoadingSchedule } = useQuery({
     queryKey: ['schedule'],
     queryFn: getSchedule,
-    staleTime: 5 * 60 * 1000, // 5 минут
+    staleTime: 5 * 60 * 1000,
   })
 
-  // Автоматически определяем текущий тур
-  const currentRound = useMemo(() => {
-    if (matches.length === 0) return 1
-    
-    const now = new Date()
-    const futureMatches = matches.filter(m => {
-      const matchDate = new Date(`${m.date}T${m.time}:00+03:00`)
-      return matchDate >= now
-    })
+  useEffect(() => {
+    if (hasInitializedRef.current || scheduleMatches.length === 0) return
+    hasInitializedRef.current = true
 
-    if (futureMatches.length === 0) {
-      return Math.max(...matches.map(m => m.round))
-    }
-
-    return Math.min(...futureMatches.map(m => m.round))
-  }, [matches])
-
-  // Устанавливаем начальный тур
-  const effectiveRound = selectedRound ?? currentRound
-
-  // Фильтруем матчи
-  const filteredMatches = useMemo(() => {
-    let result = matches
-
-    if (selectedTeam) {
-      result = result.filter(m => m.homeTeam === selectedTeam || m.awayTeam === selectedTeam)
+    const next = getNextMatch(scheduleMatches)
+    if (next) {
+      setNextMatchId(next.id)
+      const round = getRoundByMatchId(scheduleMatches, next.id)
+      if (round) initialRoundRef.current = round
     } else {
-      result = result.filter(m => m.round === effectiveRound)
+      initialRoundRef.current = getCurrentRound(scheduleMatches)
     }
 
-    return result
-  }, [matches, effectiveRound, selectedTeam])
+    if (!roundParam && !teamParam && initialRoundRef.current) {
+      setSearchParams({ round: String(initialRoundRef.current) }, { replace: true })
+    }
+  }, [scheduleMatches, roundParam, teamParam, setSearchParams])
 
-  // Группируем по датам
-  const groupedMatches = useMemo(() => {
-    const groups = new Map<string, typeof filteredMatches>()
-    
-    filteredMatches.forEach(match => {
-      const date = match.date
-      if (!groups.has(date)) {
-        groups.set(date, [])
+  const selectedRound = roundParam ? Number(roundParam) : initialRoundRef.current
+
+  const setFilter = (params: { round?: number; team?: string }) => {
+    const next = new URLSearchParams(searchParams)
+    if (params.round !== undefined) {
+      next.set('round', String(params.round))
+    }
+    if (params.team !== undefined) {
+      if (params.team) {
+        next.set('team', params.team)
+        const nextForTeam = findNextMatch(getMatchesByTeam(scheduleMatches, params.team))
+        setNextMatchId(nextForTeam?.id)
+      } else {
+        next.delete('team')
+        const generalNext = getNextMatch(scheduleMatches)
+        setNextMatchId(generalNext?.id)
+        if (!next.has('round') && initialRoundRef.current) {
+          next.set('round', String(initialRoundRef.current))
+        }
       }
-      groups.get(date)!.push(match)
+    }
+    setSearchParams(next, { replace: true })
+  }
+
+  const { data: predictedKeys = new Set<string>() } = useQuery({
+    queryKey: ['predictions', 'keys', user?.id],
+    queryFn: () => getUserPredictedMatchKeys(user!.id),
+    enabled: !!user?.id,
+    staleTime: 0,
+    retry: 1,
+    initialData: user?.id ? () => getCachedPredictedKeys(user.id) : undefined,
+    placeholderData: keepPreviousData,
+  })
+
+  const { matches: liveMatches } = useLiveMatches(selectedRound, selectedTeam)
+
+  useEffect(() => {
+    if (selectedTeam) {
+      const nextForTeam = findNextMatch(getMatchesByTeam(scheduleMatches, selectedTeam))
+      setNextMatchId(nextForTeam?.id)
+    }
+  }, [selectedTeam, scheduleMatches])
+
+  useScrollToElement(nextMatchId ? `match-${nextMatchId}` : null)
+
+  const allMatches = useMemo(() => {
+    const base = selectedTeam
+      ? getMatchesByTeam(scheduleMatches, selectedTeam).map(scheduleToMatch)
+      : scheduleMatches.filter(m => m.round === selectedRound).map(scheduleToMatch)
+
+    if (liveMatches.length === 0) return base
+
+    return base.map(m => {
+      const live = liveMatches.find(l =>
+        l.homeTeam === m.homeTeam && l.awayTeam === m.awayTeam
+      )
+      return live
+        ? { ...m, homeScore: live.homeScore ?? undefined, awayScore: live.awayScore ?? undefined, status: live.status }
+        : m
     })
+  }, [selectedTeam, selectedRound, liveMatches, scheduleMatches])
 
-    return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b))
-  }, [filteredMatches])
+  const groupedMatches = useMemo(() => {
+    const roundMap = new Map<number, RoundGroup>()
 
-  if (isLoading) {
+    for (const match of allMatches) {
+      let roundGroup = roundMap.get(match.round)
+      if (!roundGroup) {
+        roundGroup = { label: `Тур ${match.round}`, days: [] }
+        roundMap.set(match.round, roundGroup)
+      }
+
+      const dateKey = match.date
+      let dayGroup = roundGroup.days.find(d => d.dateKey === dateKey)
+      if (!dayGroup) {
+        const d = new Date(dateKey)
+        const dateLabel = `${formatDate(d, 'long')}, ${formatWeekday(d, 'long')}`
+        dayGroup = { dateKey, dateLabel, matches: [] }
+        roundGroup.days.push(dayGroup)
+      }
+      dayGroup.matches.push(match)
+    }
+
+    return Array.from(roundMap.values())
+  }, [allMatches])
+
+  const handleFavoriteClick = useCallback((matchId: string) => {
+    setSheetMatchId(matchId)
+  }, [])
+
+  const handleSync = useCallback(async () => {
+    setIsSyncing(true)
+    setSyncError(null)
+    try {
+      await triggerSync()
+      queryClient.invalidateQueries({ queryKey: ['matches'] })
+      queryClient.invalidateQueries({ queryKey: ['standings'] })
+      queryClient.invalidateQueries({ queryKey: ['leaderboard'] })
+      queryClient.invalidateQueries({ queryKey: SYNC_STATE_QUERY_KEY })
+    } catch (err) {
+      setSyncError(err instanceof Error ? err.message : 'Не удалось обновить данные')
+    } finally {
+      setIsSyncing(false)
+    }
+  }, [queryClient])
+
+  if (isLoadingSchedule) {
     return (
       <div className="match-list">
-        <Spinner />
+        <div className="match-list__loading">Загрузка расписания...</div>
       </div>
     )
   }
@@ -78,59 +252,134 @@ export function MatchList({ onPredict }: MatchListProps) {
   return (
     <div className="match-list">
       <div className="round-header">
-        <div className="round-header__round">
-          {selectedTeam ? selectedTeam : `Тур ${effectiveRound}`}
-        </div>
+        <div className="round-header__round">Тур {selectedRound}</div>
         <div className="round-header__accent" />
       </div>
 
       <div className="match-list__filters">
         {!selectedTeam && (
-          <select 
-            className="match-list__select" 
-            value={effectiveRound}
-            onChange={e => setSelectedRound(Number(e.target.value))}
+          <select
+            value={selectedRound}
+            onChange={e => setFilter({ round: Number(e.target.value) })}
+            className="match-list__select"
           >
-            {Array.from({ length: 30 }, (_, i) => (
-              <option key={i + 1} value={i + 1}>Тур {i + 1}</option>
+            {rounds.map(r => (
+              <option key={r.number} value={r.number}>
+                Тур {r.number}
+              </option>
             ))}
           </select>
         )}
-        <select 
-          className="match-list__select" 
+        <select
           value={selectedTeam}
-          onChange={e => setSelectedTeam(e.target.value)}
+          onChange={e => setFilter({ team: e.target.value })}
+          className="match-list__select"
         >
           <option value="">Все команды</option>
           {teams.map(t => (
-            <option key={t.id} value={t.name}>{t.name}</option>
+            <option key={t.id} value={t.name}>
+              {t.name}
+            </option>
           ))}
         </select>
+        {(selectedTeam || selectedRound !== initialRoundRef.current) && (
+          <button
+            className="match-list__reset"
+            onClick={() => {
+              const generalNext = getNextMatch(scheduleMatches)
+              setNextMatchId(generalNext?.id)
+              setSearchParams({}, { replace: true })
+            }}
+            title="Сбросить фильтры"
+          >
+            ×
+          </button>
+        )}
+        <button
+          className="match-list__sync"
+          onClick={handleSync}
+          disabled={isSyncing}
+          title="Принудительно обновить данные матчей"
+        >
+          <span className={`match-list__sync-icon${isSyncing ? ' match-list__sync-icon--spin' : ''}`}>↻</span>
+          {isSyncing ? (
+            <span>Обновление…</span>
+          ) : (
+            <DataStatusChip
+              sources={[
+                { queryKey: ['matches', 'results'], cacheKey: 'results' },
+                ...(user?.id
+                  ? [
+                      { queryKey: ['predictions', 'keys', user.id], cacheKey: `predicted_keys_${user.id}` },
+                      { queryKey: ['favorites', 'overview'], cacheKey: 'favorites_overview' },
+                    ]
+                  : []),
+              ]}
+              syncState={syncState}
+              fallback="Обновить"
+            />
+          )}
+        </button>
       </div>
 
+      {syncError && (
+        <div className="match-list__sync-error">{syncError}</div>
+      )}
+
       <div className="match-list__grid">
-        {groupedMatches.map(([date, dateMatches]) => (
-          <div key={date} className="match-list__date-group">
-            <div className="match-list__date-header">
-              {formatDate(date, 'short')}, {formatWeekday(date, 'short')}
-            </div>
-            {dateMatches.map(match => (
-              <div key={match.id} className="match-card-wrap">
-                <div className="match-card" onClick={() => onPredict?.(match.id)}>
-                  <div className="match-card__date">
-                    {match.time}
-                  </div>
-                  <div className="match-card__teams">
-                    <span className="match-card__team match-card__team--home">{match.homeTeam}</span>
-                    <span className="match-card__vs">vs</span>
-                    <span className="match-card__team match-card__team--away">{match.awayTeam}</span>
+        {groupedMatches.length === 0 ? (
+          <div className="match-list__empty">
+            {selectedTeam
+              ? `Нет матчей для команды ${selectedTeam}`
+              : 'Нет матчей для отображения'}
+          </div>
+        ) : (
+          groupedMatches.map(group => (
+            <div key={group.label} className="match-list__group">
+              {(selectedTeam || selectedRound !== initialRoundRef.current) && (
+                <h3 className="match-list__date-header">{group.label}</h3>
+              )}
+              {group.days.map(day => (
+                <div key={day.dateKey} className="match-list__day-group">
+                  <h4 className="match-list__day-header">{day.dateLabel}</h4>
+                  <div className="match-list__group-items">
+                    {day.matches.map((match, idx) => (
+                      <div key={match.id} className="match-card-wrap" style={{ animationDelay: `${idx * 80}ms` }}>
+                        <MatchCard
+                          matchId={match.id}
+                          homeTeam={match.homeTeam}
+                          awayTeam={match.awayTeam}
+                          date={match.date}
+                          time={match.time}
+                          homeScore={match.homeScore}
+                          awayScore={match.awayScore}
+                          status={match.status}
+                          isNext={match.id === nextMatchId}
+                          id={match.id === nextMatchId ? `match-${match.id}` : undefined}
+                          onClick={onPredict ? () => onPredict(match.id) : undefined}
+                          isFavorite={isFavorite(match.id)}
+                          favoriteCount={favoriteCount(match.id)}
+                          starlets={starlets(match.id)}
+                          glowLevel={glowLevel(match.id)}
+                          onFavoriteToggle={user ? () => toggleFavorite(match.id) : undefined}
+                          onFavoriteClick={() => handleFavoriteClick(match.id)}
+                          hasPredicted={predictedKeys.has(`${match.round}|${match.homeTeam}|${match.awayTeam}`)}
+                        />
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        ))}
+              ))}
+            </div>
+          ))
+        )}
       </div>
+
+      <FavoriteSheet
+        matchId={sheetMatchId ?? ''}
+        isOpen={sheetMatchId !== null}
+        onClose={() => setSheetMatchId(null)}
+      />
     </div>
   )
 }
