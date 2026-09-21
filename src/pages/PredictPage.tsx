@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PredictionForm, type PredictionFormData } from '../components/PredictionForm'
-import { savePrediction, deletePrediction, getPredictionForMatch, type PredictionData } from '../api/predictions'
+import { savePrediction, deletePrediction, getPredictionForMatch, getMatchOtherPredictions, type PredictionData } from '../api/predictions'
 import { getResults, getCachedResults, getSchedule, type ScheduleEntry } from '../api/matches'
 import { useAuth } from '../hooks/useAuth'
 import type { SaveResult } from '../api/predictions'
@@ -30,7 +30,7 @@ export function PredictPage() {
 
   const match = matches.find(m => m.id === matchId)
 
-  const { data: existingPrediction, isLoading: isLoadingPrediction } = useQuery({
+  const {  existingPrediction, isLoading: isLoadingPrediction } = useQuery({
     queryKey: ['predictions', 'detail', user?.id, match?.homeTeam, match?.awayTeam, match?.round],
     queryFn: () => getPredictionForMatch(user!.id, match!.homeTeam, match!.awayTeam, match!.round),
     enabled: !!user && !!match,
@@ -42,6 +42,15 @@ export function PredictPage() {
     queryFn: getResults,
     staleTime: 15 * 60 * 1000,
     initialData: getCachedResults,
+  })
+
+  // Загружаем ставки других игроков для завершённых матчей
+  const matchIdNum = match ? parseInt(match.id) : null
+  const {  otherPredictions } = useQuery({
+    queryKey: ['predictions', 'other', matchIdNum, user?.id],
+    queryFn: () => getMatchOtherPredictions(matchIdNum!, user!.id),
+    enabled: !!matchIdNum && !!user?.id && !isMatchOpen(match!),
+    staleTime: 5 * 60 * 1000,
   })
 
   const queryClient = useQueryClient()
@@ -106,6 +115,12 @@ export function PredictPage() {
 
   const matchClosed = !isMatchOpen(match)
 
+  // Находим результат матча
+  const matchResult = allResults.find(
+    r => r.homeTeam === match.homeTeam && r.awayTeam === match.awayTeam && r.round === match.round
+  )
+  const isFinished = matchResult?.status === 'FINISHED'
+
   return (
     <div className="page">
       <PredictionForm
@@ -115,7 +130,13 @@ export function PredictPage() {
         onSubmit={handleSubmit}
         onSaved={goBack}
         canEdit={!matchClosed}
+        isFinished={isFinished}
+        actualHomeScore={matchResult?.homeScore ?? null}
+        actualAwayScore={matchResult?.awayScore ?? null}
+        points={existingPrediction?.pointsEarned ?? null}
         onDelete={deleteMutation.mutate}
+        otherPredictions={otherPredictions?.predictions ?? []}
+        otherPredictionsCount={otherPredictions?.count ?? 0}
       />
       <button className="btn btn--secondary predict-page__back" onClick={goBack}>
         Назад к матчам
