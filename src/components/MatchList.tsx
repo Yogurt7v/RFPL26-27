@@ -95,12 +95,12 @@ export function MatchList({ onPredict }: MatchListProps) {
   const [sheetMatchId, setSheetMatchId] = useState<string | null>(null)
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
-  const [selectedRound, setSelectedRound] = useState<number>(1)
+  const initialRoundRef = useRef(1)
   const hasInitializedRef = useRef(false)
 
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const { data: syncState } = useSyncStateQuery()
+  const {  syncState } = useSyncStateQuery()
   const {
     isFavorite,
     toggleFavorite,
@@ -112,7 +112,7 @@ export function MatchList({ onPredict }: MatchListProps) {
   const selectedTeam = teamParam ?? ''
 
   // Получаем расписание из Supabase
-  const { data: scheduleMatches = [], isLoading: isLoadingSchedule, error: scheduleError } = useQuery({
+  const {  scheduleMatches = [], isLoading: isLoadingSchedule, error: scheduleError } = useQuery({
     queryKey: ['schedule'],
     queryFn: getSchedule,
     staleTime: 5 * 60 * 1000,
@@ -127,15 +127,21 @@ export function MatchList({ onPredict }: MatchListProps) {
     if (next) {
       setNextMatchId(next.id)
       const round = getRoundByMatchId(scheduleMatches, next.id)
-      if (round) setSelectedRound(round)
+      if (round) initialRoundRef.current = round
     } else {
-      setSelectedRound(getCurrentRound(scheduleMatches))
+      initialRoundRef.current = getCurrentRound(scheduleMatches)
     }
 
-    if (!roundParam && !teamParam) {
-      setSearchParams({ round: String(selectedRound) }, { replace: true })
+    // Устанавливаем начальный тур в URL только если его там нет
+    if (!roundParam && !teamParam && initialRoundRef.current) {
+      const currentParams = new URLSearchParams(searchParams)
+      if (currentParams.get('round') !== String(initialRoundRef.current)) {
+        setSearchParams({ round: String(initialRoundRef.current) }, { replace: true })
+      }
     }
-  }, [scheduleMatches, roundParam, teamParam, setSearchParams, selectedRound])
+  }, [scheduleMatches, roundParam, teamParam, setSearchParams, searchParams])
+
+  const selectedRound = roundParam ? Number(roundParam) : initialRoundRef.current
 
   const setFilter = (params: { round?: number; team?: string }) => {
     const next = new URLSearchParams(searchParams)
@@ -151,15 +157,15 @@ export function MatchList({ onPredict }: MatchListProps) {
         next.delete('team')
         const generalNext = getNextMatch(scheduleMatches)
         setNextMatchId(generalNext?.id)
-        if (!next.has('round') && selectedRound) {
-          next.set('round', String(selectedRound))
+        if (!next.has('round') && initialRoundRef.current) {
+          next.set('round', String(initialRoundRef.current))
         }
       }
     }
     setSearchParams(next, { replace: true })
   }
 
-  const { data: predictedKeys = new Set<string>() } = useQuery({
+  const {  predictedKeys = new Set<string>() } = useQuery({
     queryKey: ['predictions', 'keys', user?.id],
     queryFn: () => getUserPredictedMatchKeys(user!.id),
     enabled: !!user?.id,
