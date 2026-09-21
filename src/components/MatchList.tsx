@@ -100,7 +100,7 @@ export function MatchList({ onPredict }: MatchListProps) {
 
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const { data: syncState } = useSyncStateQuery()
+  const {  syncState } = useSyncStateQuery()
   const {
     isFavorite,
     toggleFavorite,
@@ -111,12 +111,14 @@ export function MatchList({ onPredict }: MatchListProps) {
 
   const selectedTeam = teamParam ?? ''
 
-  const { data: scheduleMatches = [], isLoading: isLoadingSchedule } = useQuery({
+  // Получаем расписание из Supabase
+  const {  scheduleMatches = [], isLoading: isLoadingSchedule } = useQuery({
     queryKey: ['schedule'],
     queryFn: getSchedule,
     staleTime: 5 * 60 * 1000,
   })
 
+  // Определяем начальный тур
   useEffect(() => {
     if (hasInitializedRef.current || scheduleMatches.length === 0) return
     hasInitializedRef.current = true
@@ -159,7 +161,7 @@ export function MatchList({ onPredict }: MatchListProps) {
     setSearchParams(next, { replace: true })
   }
 
-  const { data: predictedKeys = new Set<string>() } = useQuery({
+  const {  predictedKeys = new Set<string>() } = useQuery({
     queryKey: ['predictions', 'keys', user?.id],
     queryFn: () => getUserPredictedMatchKeys(user!.id),
     enabled: !!user?.id,
@@ -254,7 +256,7 @@ export function MatchList({ onPredict }: MatchListProps) {
       </div>
     )
   }
-  
+
   return (
     <div className="match-list">
       <div className="round-header">
@@ -352,7 +354,7 @@ export function MatchList({ onPredict }: MatchListProps) {
                     {day.matches.map((match, idx) => (
                       <div key={match.id} className="match-card-wrap" style={{ animationDelay: `${idx * 80}ms` }}>
                         <MatchCard
-                       matchId={match.id}
+                          matchId={match.id}
                           homeTeam={match.homeTeam}
                           awayTeam={match.awayTeam}
                           date={match.date}
