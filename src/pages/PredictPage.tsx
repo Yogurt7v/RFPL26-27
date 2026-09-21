@@ -1,136 +1,125 @@
-import { useState, useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { getSchedule } from '../api/matches'
-import { formatDate, formatWeekday } from '../lib/format'
-import { teams } from '../lib/teams'
-import { Spinner } from './Spinner'
+import { useParams, useNavigate } from 'react-router-dom'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { PredictionForm, type PredictionFormData } from '../components/PredictionForm'
+import { savePrediction, deletePrediction, getPredictionForMatch, type PredictionData } from '../api/predictions'
+import { getResults, getCachedResults, getSchedule, type ScheduleEntry } from '../api/matches'
+import { useAuth } from '../hooks/useAuth'
+import type { SaveResult } from '../api/predictions'
 
-interface MatchListProps {
-  onPredict?: (matchId: string) => void
+function isMatchOpen(match: ScheduleEntry): boolean {
+  const matchStart = new Date(`${match.date}T${match.time}:00+03:00`)
+  return Date.now() < matchStart.getTime()
 }
 
-export function MatchList({ onPredict }: MatchListProps) {
-  const [selectedRound, setSelectedRound] = useState<number | null>(null)
-  const [selectedTeam, setSelectedTeam] = useState<string>('')
+export function PredictPage() {
+  const { matchId } = useParams<{ matchId: string }>()
+  const navigate = useNavigate()
+  const { user } = useAuth()
 
-  const { data: matches = [], isLoading } = useQuery({
+  const goBack = () => {
+    if (window.history.length > 1) navigate(-1)
+    else navigate('/')
+  }
+
+  const { data: matches = [] } = useQuery({
     queryKey: ['schedule'],
     queryFn: getSchedule,
-    staleTime: 5 * 60 * 1000, // 5 минут
+    staleTime: 5 * 60 * 1000,
   })
 
-  // Автоматически определяем текущий тур
-  const currentRound = useMemo(() => {
-    if (matches.length === 0) return 1
-    
-    const now = new Date()
-    const futureMatches = matches.filter(m => {
-      const matchDate = new Date(`${m.date}T${m.time}:00+03:00`)
-      return matchDate >= now
-    })
+  const match = matches.find(m => m.id === matchId)
 
-    if (futureMatches.length === 0) {
-      return Math.max(...matches.map(m => m.round))
-    }
+  const { data: existingPrediction, isLoading: isLoadingPrediction } = useQuery({
+    queryKey: ['predictions', 'detail', user?.id, match?.homeTeam, match?.awayTeam, match?.round],
+    queryFn: () => getPredictionForMatch(user!.id, match!.homeTeam, match!.awayTeam, match!.round),
+    enabled: !!user && !!match,
+    staleTime: 30_000,
+  })
 
-    return Math.min(...futureMatches.map(m => m.round))
-  }, [matches])
+  const { data: allResults = [] } = useQuery({
+    queryKey: ['matches', 'results'],
+    queryFn: getResults,
+    staleTime: 15 * 60 * 1000,
+    initialData: getCachedResults,
+  })
 
-  // Устанавливаем начальный тур
-  const effectiveRound = selectedRound ?? currentRound
+  const queryClient = useQueryClient()
 
-  // Фильтруем матчи
-  const filteredMatches = useMemo(() => {
-    let result = matches
+  const saveMutation = useMutation({
+    mutationFn: (prediction: PredictionFormData) =>
+      savePrediction(user!.id, match!.homeTeam, match!.awayTeam, match!.round, prediction as PredictionData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['predictions'] })
+    },
+  })
 
-    if (selectedTeam) {
-      result = result.filter(m => m.homeTeam === selectedTeam || m.awayTeam === selectedTeam)
-    } else {
-      result = result.filter(m => m.round === effectiveRound)
-    }
+  const deleteMutation = useMutation({
+    mutationFn: () =>
+      deletePrediction(user!.id, match!.homeTeam, match!.awayTeam, match!.round),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['predictions'] })
+      goBack()
+    },
+  })
 
-    return result
-  }, [matches, effectiveRound, selectedTeam])
+  const handleSubmit = async (prediction: PredictionFormData): Promise<SaveResult> =>
+    saveMutation.mutateAsync(prediction)
 
-  // Группируем по датам
-  const groupedMatches = useMemo(() => {
-    const groups = new Map<string, typeof filteredMatches>()
-    
-    filteredMatches.forEach(match => {
-      const date = match.date
-      if (!groups.has(date)) {
-        groups.set(date, [])
-      }
-      groups.get(date)!.push(match)
-    })
-
-    return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b))
-  }, [filteredMatches])
-
-  if (isLoading) {
+  if (!match) {
     return (
-      <div className="match-list">
-        <Spinner />
+      <div className="page">
+        <p>Матч не найден</p>
+        <button onClick={goBack}>Назад к матчам</button>
       </div>
     )
   }
 
-  return (
-    <div className="match-list">
-      <div className="round-header">
-        <div className="round-header__round">
-          {selectedTeam ? selectedTeam : `Тур ${effectiveRound}`}
+  if (!user) {
+    return (
+      <div className="page">
+        <p>Войдите, чтобы сделать прогноз</p>
+        <button onClick={() => navigate('/login')}>Войти</button>
+      </div>
+    )
+  }
+
+  if (isLoadingPrediction) {
+    return (
+      <div className="page">
+        <div className="check">
+          <p>Загрузка...</p>
         </div>
-        <div className="round-header__accent" />
       </div>
+    )
+  }
 
-      <div className="match-list__filters">
-        {!selectedTeam && (
-          <select 
-            className="match-list__select" 
-            value={effectiveRound}
-            onChange={e => setSelectedRound(Number(e.target.value))}
-          >
-            {Array.from({ length: 30 }, (_, i) => (
-              <option key={i + 1} value={i + 1}>Тур {i + 1}</option>
-            ))}
-          </select>
-        )}
-        <select 
-          className="match-list__select" 
-          value={selectedTeam}
-          onChange={e => setSelectedTeam(e.target.value)}
-        >
-          <option value="">Все команды</option>
-          {teams.map(t => (
-            <option key={t.id} value={t.name}>{t.name}</option>
-          ))}
-        </select>
-      </div>
+  const initialValues: PredictionFormData | null = existingPrediction
+    ? {
+        predictedHomeScore: existingPrediction.predictedHomeScore,
+        predictedAwayScore: existingPrediction.predictedAwayScore,
+        outcome: (existingPrediction.outcome as '1' | 'X' | '2') || null,
+        homeGoalsThreshold: existingPrediction.homeGoalsThreshold,
+        awayGoalsThreshold: existingPrediction.awayGoalsThreshold,
+      }
+    : null
+  const matchClosed = !isMatchOpen(match)
 
-      <div className="match-list__grid">
-        {groupedMatches.map(([date, dateMatches]) => (
-          <div key={date} className="match-list__date-group">
-            <div className="match-list__date-header">
-              {formatDate(date, 'short')}, {formatWeekday(date, 'short')}
-            </div>
-            {dateMatches.map(match => (
-              <div key={match.id} className="match-card-wrap">
-                <div className="match-card" onClick={() => onPredict?.(match.id)}>
-                  <div className="match-card__date">
-                    {match.time}
-                  </div>
-                  <div className="match-card__teams">
-                    <span className="match-card__team match-card__team--home">{match.homeTeam}</span>
-                    <span className="match-card__vs">vs</span>
-                    <span className="match-card__team match-card__team--away">{match.awayTeam}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
+  return (
+    <div className="page">
+      <PredictionForm
+        homeTeam={match.homeTeam}
+        awayTeam={match.awayTeam}
+        initialValues={initialValues}
+        onSubmit={handleSubmit}
+        onSaved={goBack}
+        canEdit={!matchClosed}
+        onDelete={deleteMutation.mutate}
+      />
+      <button className="btn btn--secondary predict-page__back" onClick={goBack}>
+        Назад к матчам
+      </button>
     </div>
   )
 }
+
+export default PredictPage
