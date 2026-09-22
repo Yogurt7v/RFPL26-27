@@ -379,9 +379,32 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Missing Supabase credentials' })
   }
 
-  const supabase = createClient(supabaseUrl, supabaseKey)
+  // Таймаут на ВСЕ Supabase-вызовы: supabase-js по умолчанию не ограничивает
+  // время запроса (бесконечное ожидание сокета), из-за чего любой rpc/select/
+  // upsert мог висеть вечно, синк не доходил до finish_sync и лок захватывался
+  // навсегда. Привязываем AbortSignal к каждому запросу к БД.
+  const SUPABASE_FETCH_TIMEOUT_MS = 25_000
+  const supabaseFetchWithTimeout = (input, init) => {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), SUPABASE_FETCH_TIMEOUT_MS)
+    return fetch(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer))
+  }
+  const supabase = createClient(supabaseUrl, supabaseKey, {
+    global: { fetch: supabaseFetchWithTimeout },
+  })
   const log = []
   const errors = []
+
+  // ── Heartbeat: прогон визуально отслеживаем по БД, а не по логам Vercel.
+  // Каждый шаг пишет last_step/last_heartbeat для своей lock_id — если синк
+  // зависнет, одной строкой в sync_state будет видно, на каком шаге.
+  async function heartbeat(step) {
+    const { error: hbError } = await supabase.rpc('heartbeat_sync', {
+      p_lock_id: lockId,
+      p_step: step,
+    })
+    if (hbError) console.warn('Heartbeat warn:', hbError.message)
+  }
 
   // ── 0. Atomic sync lock (dedup between cron / button / auto-sync tabs) ──
   const { data: claimData, error: claimError } = await supabase.rpc('claim_sync', {
