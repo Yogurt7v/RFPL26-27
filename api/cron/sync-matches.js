@@ -337,7 +337,16 @@ async function fetchHtml(path, timeoutMs = FETCH_TIMEOUT_MS) {
       throw new Error(`HTTP ${response.status} for ${path}`)
     }
 
-    return stripScripts(await response.text())
+    // Таймаут распространяется и на чтение тела: soccer365 держит сокет
+    // открытым, отдавая большой/медленный HTML, из-за чего await
+    // response.text() может висеть дольше timeoutMs, синк не доходит до
+    // upsert и лок остаётся захваченным навсегда.
+    return await Promise.race([
+      stripScripts(await response.text()),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`Body read timeout ${timeoutMs}ms for ${path}`)), timeoutMs)
+      ),
+    ])
   } finally {
     clearTimeout(timer)
   }
