@@ -27,11 +27,6 @@ function teamName(id) {
 
 // ── HTML helpers ───────────────────────────────────────────────────────
 
-function stripScripts(html) {
-  return html.replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<noscript[\s\S]*?<\/noscript>/gi, '')
-}
-
 function parseDate(dateStr) {
   const today = new Date()
   const day = today.getDate().toString().padStart(2, '0')
@@ -341,8 +336,10 @@ async function fetchHtml(path, timeoutMs = FETCH_TIMEOUT_MS) {
     // открытым, отдавая большой/медленный HTML, из-за чего await
     // response.text() может висеть дольше timeoutMs, синк не доходит до
     // upsert и лок остаётся захваченным навсегда.
+    // ld+json (startDate в <script>) нужен для калибровки таймзоны в
+    // computeTzDeltaMs, поэтому скрипты НЕ вырезаем.
     return await Promise.race([
-      stripScripts(await response.text()),
+      await response.text(),
       new Promise((_, reject) =>
         setTimeout(() => reject(new Error(`Body read timeout ${timeoutMs}ms for ${path}`)), timeoutMs)
       ),
