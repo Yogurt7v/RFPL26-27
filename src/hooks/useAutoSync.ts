@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useQuery, keepPreviousData, useQueryClient } from '@tanstack/react-query'
 import { getSchedule, getCachedSchedule } from '../api/matches'
 import { useSyncStateQuery } from './useSyncState'
@@ -17,6 +18,7 @@ function moscowDateStr(): string {
 // серверный замок claim_sync сам решает, кто из конкурентов «победитель».
 export function useAutoSync() {
   const queryClient = useQueryClient()
+  const location = useLocation()
   const inFlight = useRef(false)
   const lastAttemptRef = useRef(0)
   const { data: syncState } = useSyncStateQuery()
@@ -33,7 +35,9 @@ export function useAutoSync() {
   const staleThresholdMs = isMatchDay ? STALE_MATCHDAY_MS : STALE_DEFAULT_MS
 
   useEffect(() => {
-    if (syncState === undefined || syncState.inProgress) return
+    // inProgress не блокирует прогон: если данные устарели, позволяем новому
+    // синку «перехватить» замок (claim_sync сам решает — busy или stale-steal).
+    if (syncState === undefined) return
 
     const lastSuccess = syncState.lastSuccessAt ?? 0
     if (Date.now() - lastSuccess < staleThresholdMs) return
@@ -68,5 +72,5 @@ export function useAutoSync() {
     return () => {
       mounted = false
     }
-  }, [syncState, queryClient, staleThresholdMs])
+  }, [syncState, queryClient, staleThresholdMs, location.pathname])
 }

@@ -24,7 +24,9 @@ function getMatchStartTime(match: ScheduleEntry): Date {
 
 function findNextMatch(matches: ScheduleEntry[]): ScheduleEntry | undefined {
   const now = Date.now()
-  return matches.find(m => now < getMatchStartTime(m).getTime() + MATCH_DURATION_MS)
+  return matches
+    .filter(m => now < getMatchStartTime(m).getTime() + MATCH_DURATION_MS)
+    .sort((a, b) => getMatchStartTime(a).getTime() - getMatchStartTime(b).getTime())[0]
 }
 
 function getNextMatch(matches: ScheduleEntry[]): ScheduleEntry | undefined {
@@ -248,11 +250,11 @@ export function MatchList({ onPredict }: MatchListProps) {
       queryClient.invalidateQueries({ queryKey: ['matches'] })
       queryClient.invalidateQueries({ queryKey: ['standings'] })
       queryClient.invalidateQueries({ queryKey: ['leaderboard'] })
-      queryClient.invalidateQueries({ queryKey: SYNC_STATE_QUERY_KEY })
     } catch (err) {
       setSyncError(err instanceof Error ? err.message : 'Не удалось обновить данные')
     } finally {
       setIsSyncing(false)
+      queryClient.invalidateQueries({ queryKey: SYNC_STATE_QUERY_KEY })
     }
   }, [queryClient])
 

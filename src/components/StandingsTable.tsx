@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { getStandings, getCachedStandings } from '../api/standings'
 import { getTeamByName } from '../lib/teams'
 import { DataStatusChip } from './DataStatusChip'
@@ -10,6 +10,7 @@ export function StandingsTable() {
     staleTime: 30 * 60_000,
     retry: 1,
     initialData: getCachedStandings,
+    placeholderData: keepPreviousData,
   })
 
   if (isLoading) {
