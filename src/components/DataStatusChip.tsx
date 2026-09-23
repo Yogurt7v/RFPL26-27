@@ -16,7 +16,13 @@ export interface DataSource {
 export interface SyncStateInfo {
   inProgress: boolean
   lastSuccessAt: number | null
+  lockStartedAt?: number | null
 }
+
+// Совпадает со stale-окном claim_sync в 018_sync_state.sql.
+const LOCK_STALE_MS = 10 * 60_000
+// «Обновлено» без времени — только пока данные свежие.
+const RECENT_MS = 5 * 60_000
 
 function formatShortDateTime(ts: number): string {
   const d = new Date(ts)
@@ -60,13 +66,27 @@ export function DataStatusChip({ sources, syncState, fallback }: DataStatusChipP
     }
   })
 
-  const updating = statuses.some(s => s.isFetching && s.hasData) || !!syncState?.inProgress
+  const isFetchingData = statuses.some(s => s.isFetching && s.hasData)
+
+  // Синк считается «идущим», только если замок свежий. Зависший замок
+  // (in_progress=true, но lock_started_at старше stale-окна) — это не процесс.
+  const lockFresh =
+    syncState?.inProgress &&
+    syncState.lockStartedAt !== null &&
+    syncState.lockStartedAt !== undefined &&
+    Date.now() - syncState.lockStartedAt < LOCK_STALE_MS
+
+  const updating = isFetchingData || lockFresh
   const isStale = statuses.some(s => s.hasData && s.staleAt !== null)
 
-  const lastUpdatedAt = statuses.reduce(
+  // Время последнего обновления: для кнопки с syncState берём время успешного
+  // серверного синка («обновлено всё что положено»), для остальных — кэш страницы.
+  const syncTimestamp = syncState?.lastSuccessAt ?? null
+  const cacheTimestamp = statuses.reduce(
     (max, s) => Math.max(max, cacheGetUpdatedAt(s.cacheKey) ?? s.dataUpdatedAt),
     0
   )
+  const lastUpdatedAt = Math.max(syncTimestamp ?? 0, cacheTimestamp)
 
   if (updating) {
     return (
@@ -77,7 +97,20 @@ export function DataStatusChip({ sources, syncState, fallback }: DataStatusChipP
   }
 
   if (lastUpdatedAt > 0) {
-    const label = `обновлено ${formatShortDateTime(lastUpdatedAt)}`
+    const recent = Date.now() - lastUpdatedAt < RECENT_MS
+    if (recent) {
+      return (
+        <span
+          className={`data-status-chip data-status-chip--ok${isStale ? ' data-status-chip--has-stale' : ''}`}
+          title={isStale
+            ? 'Последний запрос не дошёл — показаны данные из кэша'
+            : 'Данные синхронизированы'}
+        >
+          обновлено
+          {isStale && <span className="data-status-chip__mark">кэш</span>}
+        </span>
+      )
+    }
     return (
       <span
         className={`data-status-chip data-status-chip--ok${isStale ? ' data-status-chip--has-stale' : ''}`}
@@ -85,7 +118,7 @@ export function DataStatusChip({ sources, syncState, fallback }: DataStatusChipP
           ? 'Последний запрос не дошёл — показаны данные из кэша'
           : 'Данные синхронизированы'}
       >
-        {label}
+        обновлено {formatShortDateTime(lastUpdatedAt)}
         {isStale && <span className="data-status-chip__mark">кэш</span>}
       </span>
     )

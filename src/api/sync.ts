@@ -3,6 +3,7 @@ import { supabase } from './supabase'
 export interface SyncState {
   inProgress: boolean
   lastSuccessAt: number | null
+  lockStartedAt: number | null
 }
 
 export async function triggerSync(): Promise<void> {
@@ -23,9 +24,14 @@ export async function getSyncState(): Promise<SyncState> {
   if (error || !data || data.length === 0) {
     throw new Error(error?.message ?? 'Empty sync state')
   }
-  const row = data[0] as { in_progress: boolean; last_success_at: string | null }
+  const row = data[0] as {
+    in_progress: boolean
+    last_success_at: string | null
+    lock_started_at: string | null
+  }
   return {
     inProgress: Boolean(row.in_progress),
     lastSuccessAt: row.last_success_at ? new Date(row.last_success_at).getTime() : null,
+    lockStartedAt: row.lock_started_at ? new Date(row.lock_started_at).getTime() : null,
   }
 }
