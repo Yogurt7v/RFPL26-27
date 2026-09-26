@@ -75,7 +75,6 @@ export function PredictionForm({
     setOutcome((initialValues.outcome as Outcome) || '')
     setHomeGoalsThreshold(initialValues.homeGoalsThreshold ?? '')
     setAwayGoalsThreshold(initialValues.awayGoalsThreshold ?? '')
-    setIsSaved(true)
   }, [initialSnapshot])
 
   const home = getTeamByName(homeTeam)
@@ -119,6 +118,11 @@ export function PredictionForm({
   }
 
   const hasScore = homeScore !== '' && awayScore !== ''
+
+  const hasAnyPrediction =
+    homeScore !== '' || awayScore !== '' ||
+    outcome !== '' ||
+    homeGoalsThreshold !== '' || awayGoalsThreshold !== ''
 
   const scoreError =
     (homeScore !== '' && awayScore === '') || (homeScore === '' && awayScore !== '')
@@ -381,7 +385,7 @@ export function PredictionForm({
 
       <div className="check__footer">
         <div className="check__tear-line" />
-        <button type="button" className="check__submit" onClick={handleSubmit} disabled={isSubmitting || !!scoreError}>
+        <button type="button" className="check__submit" onClick={handleSubmit} disabled={isSubmitting || !!scoreError || !hasAnyPrediction}>
           {isSubmitting ? 'Сохранение...' : 'Сделать прогноз'}
         </button>
       </div>
