@@ -8,6 +8,8 @@
 
 html {
   font-size: var(--font-size-base);
+  background-color: var(--color-bg);
+  overscroll-behavior-y: none;
 }
 
 body {
