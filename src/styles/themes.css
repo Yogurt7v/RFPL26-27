@@ -1,5 +1,7 @@
 /* Светлая тема (по умолчанию) */
+:root,
 [data-theme="light"] {
+  color-scheme: light;
   --color-bg: #FFFFFF;
   --color-bg-secondary: #F4F5F7;
   --color-bg-card: #FFFFFF;
@@ -33,6 +35,7 @@
 
 /* Тёмная тема */
 [data-theme="dark"] {
+  color-scheme: dark;
   --color-bg: #0A0E1A;
   --color-bg-secondary: #131829;
   --color-bg-card: #1A2035;
