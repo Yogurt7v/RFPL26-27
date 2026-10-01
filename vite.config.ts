@@ -20,8 +20,8 @@ export default defineConfig({
         name: 'РПЛ Прогнозы 2026/2027',
         short_name: 'РПЛ Прогнозы',
         description: 'Прогнозы матчей Российской Премьер-Лиги сезона 2026/2027',
-        theme_color: '#1a1a2e',
-        background_color: '#1a1a2e',
+        theme_color: '#0A0E1A',
+        background_color: '#0A0E1A',
         display: 'standalone',
         icons: [
           {
