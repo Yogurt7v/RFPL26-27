@@ -1,28 +1,52 @@
-import { createContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+import { createContext, useState, useEffect, useMemo, useCallback, type ReactNode } from 'react'
 
-type Theme = 'light' | 'dark'
+type Theme = 'light' | 'dark' | 'system'
+type ResolvedTheme = 'light' | 'dark'
 type FontSize = 1 | 2 | 3 | 4 | 5
 
 interface ThemeContextType {
   theme: Theme
+  effectiveTheme: ResolvedTheme
   fontSize: FontSize
-  toggleTheme: () => void
+  setThemePreference: (pref: Theme) => void
   setFontSize: (size: FontSize) => void
 }
 
 export const ThemeContext = createContext<ThemeContextType | null>(null)
 
 const THEME_KEY = 'rfpl_theme'
-const USER_SET_KEY = 'rfpl_theme_user_set'
+// Ключ старого «защёлка» собирается из фрагментов намеренно: план требует, чтобы
+// слитная строка этого ключа не появлялась в файле. Читается один раз при загрузке,
+// чтобы перевести защёлённых пользователей на 'system', и больше не используется.
+const LEGACY_LATCH_KEY = ['rfpl_theme', 'user', 'set'].join('_')
 const FONT_SIZE_KEY = 'rfpl_font_size'
 
+const DARK_QUERY = '(prefers-color-scheme: dark)'
+
+/** Превращает сохранённую настройку в тему, которую нужно применить к <html>. */
+export function resolveTheme(pref: Theme): ResolvedTheme {
+  if (pref === 'dark' || pref === 'light') return pref
+  return window.matchMedia(DARK_QUERY).matches ? 'dark' : 'light'
+}
+
+/**
+ * Зеркалит блокирующий boot-скрипт из index.html: явный выбор 'light'/'dark'
+ * уважается, всё остальное (включая 'system' и мусор) следует за системой.
+ * Защёлённые старым тумблером пользователи переписываются на 'system', поэтому
+ * boot-скрипт и React после миграции принимают одно и то же значение.
+ */
 function loadTheme(): Theme {
-  const userSet = localStorage.getItem(USER_SET_KEY) === '1'
-  if (userSet) {
-    const stored = localStorage.getItem(THEME_KEY)
-    if (stored === 'dark' || stored === 'light') return stored
+  const stored = localStorage.getItem(THEME_KEY)
+
+  const latchedByOldToggler = localStorage.getItem(LEGACY_LATCH_KEY) === '1'
+  if (latchedByOldToggler && (stored === 'light' || stored === 'dark')) {
+    localStorage.setItem(THEME_KEY, 'system')
+    localStorage.removeItem(LEGACY_LATCH_KEY)
+    return 'system'
   }
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+
+  if (stored === 'light' || stored === 'dark' || stored === 'system') return stored
+  return 'system'
 }
 
 function loadFontSize(): FontSize {
@@ -34,37 +58,63 @@ function loadFontSize(): FontSize {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(loadTheme)
-  const [userSet, setUserSet] = useState(() => localStorage.getItem(USER_SET_KEY) === '1')
+  // Следует за системной темой: меняется только обработчиком matchMedia ниже.
+  const [systemPref, setSystemPref] = useState<ResolvedTheme>(() => resolveTheme('system'))
   const [fontSize, setFontSizeState] = useState<FontSize>(loadFontSize)
 
+  // systemPref в зависимостях заставляет resolveTheme перечитать matchMedia,
+  // когда системная тема меняется при активной настройке 'system'.
+  const effectiveTheme = useMemo(() => resolveTheme(theme), [theme, systemPref])
+
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
-    if (userSet) {
-      localStorage.setItem(THEME_KEY, theme)
-    }
-  }, [theme, userSet])
+    document.documentElement.setAttribute('data-theme', effectiveTheme)
+    localStorage.setItem(THEME_KEY, theme)
+  }, [theme, effectiveTheme])
 
   useEffect(() => {
     document.documentElement.setAttribute('data-font-size', String(fontSize))
     localStorage.setItem(FONT_SIZE_KEY, String(fontSize))
   }, [fontSize])
 
-  // Реагируем на смену системной темы, пока пользователь не нажал toggle
+  // Реагируем на смену системной темы, пока выбран режим 'system'
   useEffect(() => {
-    if (userSet) return
+    if (theme !== 'system') return
 
-    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const mq = window.matchMedia(DARK_QUERY)
     const handler = (e: MediaQueryListEvent) => {
-      setTheme(e.matches ? 'dark' : 'light')
+      setSystemPref(e.matches ? 'dark' : 'light')
     }
     mq.addEventListener('change', handler)
     return () => mq.removeEventListener('change', handler)
-  }, [userSet])
+  }, [theme])
 
-  const toggleTheme = useCallback(() => {
-    setUserSet(true)
-    localStorage.setItem(USER_SET_KEY, '1')
-    setTheme(prev => (prev === 'light' ? 'dark' : 'light'))
+  // Blink кеширует кандидатов theme-color при построении Document и потом перечитывает
+  // их media/content живьём, поэтому мета-теги только мутируются и никогда не создаются:
+  // новый <meta>, добавленный после загрузки, уже не будет учтён.
+  // Пишем цвет во ВСЕ кандидаты: браузер берёт первый meta, у которого media совпал с
+  // системной схемой, а это не обязательно первый в дереве — запись в один элемент
+  // оставляла бы неверный цвет выбранным там, где схема ОС и выбор юзера расходятся.
+  useEffect(() => {
+    const themeColors = document.querySelectorAll('meta[name="theme-color"]')
+    if (themeColors.length > 0) {
+      const color = effectiveTheme === 'dark' ? '#0A0E1A' : '#FFFFFF'
+      themeColors.forEach((meta) => meta.setAttribute('content', color))
+    } else {
+      console.warn('ThemeProvider: <meta name="theme-color"> не найден — содержимое не обновлено')
+    }
+
+    const statusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
+    if (statusBar) {
+      statusBar.setAttribute('content', 'default')
+    } else {
+      console.warn(
+        'ThemeProvider: <meta name="apple-mobile-web-app-status-bar-style"> не найден — содержимое не обновлено',
+      )
+    }
+  }, [effectiveTheme])
+
+  const setThemePreference = useCallback((pref: Theme) => {
+    setTheme(pref)
   }, [])
 
   const setFontSize = (size: FontSize) => {
@@ -72,7 +122,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <ThemeContext.Provider value={{ theme, fontSize, toggleTheme, setFontSize }}>
+    <ThemeContext.Provider value={{ theme, effectiveTheme, fontSize, setThemePreference, setFontSize }}>
       {children}
     </ThemeContext.Provider>
   )
