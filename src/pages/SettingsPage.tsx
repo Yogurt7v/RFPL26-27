@@ -14,6 +14,20 @@ const FONT_SIZE_LABELS: Record<number, string> = {
   5: 'Очень большой',
 }
 
+type ThemePreference = 'light' | 'dark' | 'system'
+
+const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
+  { value: 'system', label: 'Системная' },
+  { value: 'light', label: 'Светлая' },
+  { value: 'dark', label: 'Тёмная' },
+]
+
+// Хинт обязан брать effectiveTheme, а не theme: при 'system' они расходятся.
+const EFFECTIVE_THEME_LABELS: Record<'light' | 'dark', string> = {
+  light: 'светлая',
+  dark: 'тёмная',
+}
+
 export function SettingsPage() {
   const themeCtx = useContext(ThemeContext)
   const { user, logout } = useAuth()
@@ -33,7 +47,7 @@ export function SettingsPage() {
 
   if (!themeCtx) return null
 
-  const { theme, fontSize, toggleTheme, setFontSize } = themeCtx
+  const { theme, effectiveTheme, setThemePreference, fontSize, setFontSize } = themeCtx
 
   const handleSaveQuestion = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -133,15 +147,23 @@ export function SettingsPage() {
 
         <div className="settings-section">
           <div className="settings-section__label">Тема</div>
-          <div className="settings-toggle">
-            <span>Тёмная тема</span>
-            <button
-              className={`toggle-switch ${theme === 'dark' ? 'toggle-switch--active' : ''}`}
-              onClick={toggleTheme}
-            >
-              <span className="toggle-switch__knob" />
-            </button>
+          <div className="settings-theme-options" role="group" aria-label="Тема оформления">
+            {THEME_OPTIONS.map(option => {
+              const active = theme === option.value
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  aria-pressed={active}
+                  className={`settings-theme-option${active ? ' settings-theme-option--active' : ''}`}
+                  onClick={() => setThemePreference(option.value)}
+                >
+                  {option.label}
+                </button>
+              )
+            })}
           </div>
+          <span className="settings-hint">Сейчас: {EFFECTIVE_THEME_LABELS[effectiveTheme]}</span>
         </div>
 
         <div className="settings-section">
