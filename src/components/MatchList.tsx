@@ -338,7 +338,7 @@ export function MatchList({ onPredict }: MatchListProps) {
                 ...(user?.id
                   ? [
                       { queryKey: ['predictions', 'keys', user.id], cacheKey: `predicted_keys_${user.id}` },
-                      { queryKey: ['favorites', 'overview'], cacheKey: 'favorites_overview' },
+                      { queryKey: ['favorites', 'overview'], cacheKey: 'favorites_overview_v2' },
                     ]
                   : []),
               ]}
