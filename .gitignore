@@ -25,9 +25,10 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# MiMoCode
+# MiMoCodes
 .mimocode
 AGENTS.md
 plan.md
-.opencode/*
+.opencode
+.omo
 .mimocode/*
