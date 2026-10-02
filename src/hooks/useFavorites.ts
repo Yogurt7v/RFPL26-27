@@ -12,16 +12,26 @@ import {
   type Starlet,
 } from '../api/favorites'
 import { cacheGetStale, cacheSet } from '../api/cache'
-import { getPerfEntries } from '../api/perf'
 
 // Снимок личных избранных нужен ровно затем, чтобы офлайн-перезагрузка
-// не снимала звёздочки: get_user_favorites при сетевой ошибке отдаёт [].
-const MINE_CACHE_KEY = 'favorites_mine_v1'
+// не снимала звёздочки: get_user_favorites при сетевой ошибке не отвечает.
+const MINE_CACHE_PREFIX = 'favorites_mine_v1'
 const MINE_CACHE_TTL = 15 * 60 * 1000
-// Метка сетевого вызова в perf-инфраструктуре (src/api/perf.ts:114).
-const MINE_RPC_LABEL = 'rpc:get_user_favorites'
 // Сервер отдаёт максимум 3 аватара на матч (015_optimize_favorites_overview.sql).
 const MAX_STARLETS = 3
+
+// И снимок, и query key включают id: logout() (src/context/AuthContext.tsx) не
+// чистит ни QueryClient, ни localStorage, поэтому общий ключ отдал бы следующему
+// пользователю на том же устройстве чужие звёздочки — в памяти до staleTime (и без
+// refetch вовсе), а с офлайн-снимка бессрочно. Обзор (overview) общим быть может:
+// он хранит избранные всех, а не одного.
+function mineCacheKey(userId: string): string {
+  return `${MINE_CACHE_PREFIX}_${userId}`
+}
+
+function mineQueryKey(userId: string): readonly ['favorites', 'mine', string] {
+  return ['favorites', 'mine', userId]
+}
 
 // Именно cacheGetStale, а НЕ cacheGet: у cacheGet просроченная запись
 // УДАЛЯЕТСЯ на чтении. Этот снимок уходит в initialData, т.е. читается раньше
@@ -29,29 +39,28 @@ const MAX_STARLETS = 3
 // офлайн-fallback ниже: при сбое get_user_favorites и просроченном кэше звёздочки
 // исчезали бы ровно тогда, когда они нужнее всего. Просроченность здесь не
 // страшна — у запроса initialDataUpdatedAt: 0.
-function getCachedUserFavorites(): string[] {
-  return cacheGetStale<string[]>(MINE_CACHE_KEY) ?? []
+function getCachedUserFavorites(userId: string | undefined): string[] {
+  if (!userId) return []
+  return cacheGetStale<string[]>(mineCacheKey(userId)) ?? []
 }
 
 async function loadUserFavorites(userId: string): Promise<string[]> {
-  const entriesBefore = getPerfEntries().length
-  const ids = await getUserFavorites(userId)
-  // Пустой ответ неотличим от «избранных нет»: RPC-ошибка тоже даёт [].
-  // Достоверным считаем только ответ, дошедший до сервера — это видно по
-  // записи с ok в perf-инфраструктуре (не дошёл / упал — записи с ok нет).
-  const delivered = getPerfEntries()
-    .slice(entriesBefore)
-    .some(e => e.label === MINE_RPC_LABEL && e.ok)
+  const { ids, delivered } = await getUserFavorites(userId)
 
-  if (!delivered) {
-    const stale = cacheGetStale<string[]>(MINE_CACHE_KEY)
-    if (stale) return stale
-    console.error('[useFavorites] get_user_favorites недоступен, снимка нет — избранные показаны пустыми')
-    return []
+  if (delivered) {
+    // Сюда попадает и честный пустой ответ: снятая последняя звезда — это
+    // доставленный результат, и он обязан быть записан, иначе офлайн вернёт
+    // старую звезду обратно.
+    cacheSet(mineCacheKey(userId), ids, MINE_CACHE_TTL)
+    return ids
   }
 
-  cacheSet(MINE_CACHE_KEY, ids, MINE_CACHE_TTL)
-  return ids
+  // Единственный путь, читающий просроченный снимок. Ниже ответа нет — пустой
+  // результат обязан быть виден (IS-8), но не обязан быть записан.
+  const stale = cacheGetStale<string[]>(mineCacheKey(userId))
+  if (stale) return stale
+  console.error('[useFavorites] get_user_favorites недоступен, снимка нет — избранные показаны пустыми')
+  return []
 }
 
 export function useFavorites() {
@@ -73,12 +82,14 @@ export function useFavorites() {
   })
 
   const { data: myFavorites, error: mineError } = useQuery({
-    queryKey: ['favorites', 'mine'],
+    queryKey: mineQueryKey(userId!),
     queryFn: () => loadUserFavorites(userId!),
     enabled: !!userId,
     staleTime: 60_000,
     retry: 1,
-    initialData: getCachedUserFavorites,
+    // Функция, а не значение: снимок читается на каждый mount по id из ключа,
+    // поэтому сменившийся пользователь не наследует чужой.
+    initialData: () => getCachedUserFavorites(userId),
     // Снимок из localStorage показываем сразу, но он же устаревший: принудительно
     // помечаем его старым, чтобы mount всегда пересверился с get_user_favorites.
     initialDataUpdatedAt: 0,
@@ -121,9 +132,9 @@ export function useFavorites() {
     },
     onMutate: async ({ matchId, wasFav }) => {
       await queryClient.cancelQueries({ queryKey: ['favorites', 'overview'] })
-      await queryClient.cancelQueries({ queryKey: ['favorites', 'mine'] })
+      await queryClient.cancelQueries({ queryKey: mineQueryKey(userId!) })
       const previous = queryClient.getQueryData<FavoritesOverview>(['favorites', 'overview'])
-      const previousMine = queryClient.getQueryData<string[]>(['favorites', 'mine'])
+      const previousMine = queryClient.getQueryData<string[]>(mineQueryKey(userId!))
 
       queryClient.setQueryData<FavoritesOverview>(['favorites', 'overview'], old => {
         if (!old) return old
@@ -148,7 +159,7 @@ export function useFavorites() {
         return { ...old, favorites }
       })
 
-      queryClient.setQueryData<string[]>(['favorites', 'mine'], old => {
+      queryClient.setQueryData<string[]>(mineQueryKey(userId!), old => {
         const list = old ?? []
         return wasFav ? list.filter(id => id !== matchId) : [...list, matchId]
       })
@@ -160,12 +171,12 @@ export function useFavorites() {
         queryClient.setQueryData(['favorites', 'overview'], context.previous)
       }
       if (context?.previousMine) {
-        queryClient.setQueryData(['favorites', 'mine'], context.previousMine)
+        queryClient.setQueryData(mineQueryKey(userId!), context.previousMine)
       }
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['favorites', 'overview'] })
-      queryClient.invalidateQueries({ queryKey: ['favorites', 'mine'] })
+      queryClient.invalidateQueries({ queryKey: mineQueryKey(userId!) })
     },
   })
 

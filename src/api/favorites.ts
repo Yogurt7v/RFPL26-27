@@ -79,17 +79,26 @@ export async function removeFavorite(userId: string, matchId: string): Promise<b
   return !error && data === true
 }
 
-export async function getUserFavorites(userId: string): Promise<string[]> {
+export interface UserFavoritesResult {
+  ids: string[]
+  delivered: boolean
+}
+
+// delivered решает сам RPC по своему error. Выводить доставку из perf-кольца
+// (hooks/useFavorites.ts) нельзя: кольцо насыщается на 60 записях (src/api/perf.ts),
+// после чего не растёт и ЛЮБОЙ успешный ответ выглядит недоставленным.
+export async function getUserFavorites(userId: string): Promise<UserFavoritesResult> {
   const { data, error } = await withRetry(() =>
     supabase.rpc('get_user_favorites', {
       p_user_id: userId,
     })
   )
   logQueryError('getUserFavorites', error)
-  // [] при ошибке остаётся осознанно: loadUserFavorites (hooks/useFavorites.ts)
-  // отличает «нет избранных» от «не дошли до сервера» по записи с ok в perf.
-  if (error) return []
-  return ((data as { match_id: string }[]) ?? []).map(d => d.match_id)
+  if (error) return { ids: [], delivered: false }
+  return {
+    ids: ((data as { match_id: string }[]) ?? []).map(d => d.match_id),
+    delivered: true,
+  }
 }
 
 export async function getMatchFavorites(matchId: string): Promise<FavoriteUser[]> {
@@ -138,6 +147,13 @@ export async function getFavoritesOverview(): Promise<FavoritesOverview> {
     // Снимок подставляем только после того, как сбой зафиксирован в консоли:
     // иначе устаревший ответ выглядит как свежий успешный.
     logQueryError('getFavoritesOverview', error, FAVORITES_CACHE_KEY)
+    // logQueryError молчит на falsy error, поэтому пустой ответ без ошибки уходил
+    // в return ниже вообще без следа. Именно он выглядит как «избранных нет».
+    if (!error) {
+      console.error(
+        `[favorites] getFavoritesOverview (cacheKey: ${FAVORITES_CACHE_KEY}): пустой ответ без ошибки — RPC вернул 0 строк (проверьте миграцию 015_optimize_favorites_overview.sql)`
+      )
+    }
     const stale = cacheGetStale<FavoritesOverview>(FAVORITES_CACHE_KEY)
     if (stale) {
       markDataStale(FAVORITES_CACHE_KEY)
