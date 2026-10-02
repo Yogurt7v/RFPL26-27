@@ -3,13 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <script>
+      // Правило защёлки живёт здесь, а не только в loadTheme(), и порядок шагов тот же.
+      // Миграция обязана случиться до первой отрисовки: если её делал бы один лишь React,
+      // первый кадр красил бы уже отменённую тему — ту самую вспышку, ради которой этот скрипт.
       (function () {
+        var os = function () { return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light' };
         var t = 'light';
         try {
           var s = localStorage.getItem('rfpl_theme');
-          t = s === 'dark' || s === 'light' ? s : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+          if (localStorage.getItem('rfpl_theme_user_set') === '1' && (s === 'light' || s === 'dark')) {
+            localStorage.setItem('rfpl_theme', 'system'); localStorage.removeItem('rfpl_theme_user_set'); s = 'system';
+          }
+          t = s === 'dark' || s === 'light' ? s : os();
         } catch (e) {
-          t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          t = os();
         }
         document.documentElement.setAttribute('data-theme', t);
       })();
