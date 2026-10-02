@@ -93,7 +93,7 @@ export function MatchCard({
                 </span>
               ))}
               {(() => {
-                const overflow = favoriteCount - starlets.length - (isFavorite ? 1 : 0)
+                const overflow = Math.max(0, favoriteCount - starlets.length)
                 return overflow > 0 ? <span className="match-card__favorites-more">+{overflow}</span> : null
               })()}
             </div>
