@@ -10,13 +10,26 @@ const FAVORITES_CACHE_KEY = 'favorites_overview_v2'
 // против staleTime в 60с означали, что перезагрузка отдавала вчерашний снимок.
 const FAVORITES_CACHE_TTL = 15 * 60 * 1000
 
-// Единственный канал, через который этот модуль сообщает о сбое. Раньше ошибки
-// превращались в пустой успешный результат, и «сломано» было неотличимо от
-// «избранных нет» (IS-8).
+// Канал ошибок транспорта: ошибки превращались в пустой успешный результат, и
+// «сломано» было неотличимо от «избранных нет» (IS-8). Ответ без ошибки, но с
+// не-true значением, сюда не попадает — его ловит logFalsyWriteResult ниже.
 function logQueryError(context: string, error: { message?: string } | null, cacheKey?: string): void {
   if (!error) return
   const suffix = cacheKey ? ` (cacheKey: ${cacheKey})` : ''
   console.error(`[favorites] ${context}${suffix}:`, error.message)
+}
+
+// Второй канал, отдельный от logQueryError: тот молчит на falsy error, а RPC
+// способен отчитаться о неудаче прямо в теле ответа. Этот случай уходил в false
+// и в 'add failed' без единой записи в консоли, а без миграции 022 повторялся
+// снова и снова. Тот же приём, что у getFavoritesOverview с 015, для записи.
+function logFalsyWriteResult(context: string, data: unknown): void {
+  const received = JSON.stringify(data) ?? String(data)
+  console.error(
+    `[favorites] ${context}: RPC вернул ${received} вместо true без ошибки — ` +
+      'проверьте миграцию src/sql/022_add_favorite_idempotent.sql ' +
+      '(применяется вручную в Supabase SQL Editor)'
+  )
 }
 
 // Сужение до JSON-объекта, а не `as`: приведение объявило бы форму заранее и
@@ -65,6 +78,7 @@ export async function addFavorite(userId: string, matchId: string): Promise<bool
     })
   )
   logQueryError('addFavorite', error)
+  if (!error && data !== true) logFalsyWriteResult('addFavorite', data)
   return !error && data === true
 }
 
@@ -76,6 +90,7 @@ export async function removeFavorite(userId: string, matchId: string): Promise<b
     })
   )
   logQueryError('removeFavorite', error)
+  if (!error && data !== true) logFalsyWriteResult('removeFavorite', data)
   return !error && data === true
 }
 
@@ -190,7 +205,8 @@ export async function getFavoritesOverview(): Promise<FavoritesOverview> {
       'Ответ get_favorites_overview имеет неожиданную форму: ожидался ' +
       "[{ result: { favorites: [...], totalUsers: N } }]. Скорее всего, в базе данных не применена " +
       'миграция 015_optimize_favorites_overview.sql — примените её вручную в Supabase SQL Editor ' +
-      '(runbook: src/sql/, порядок 001 → 015; замена функции начинается с DROP FUNCTION). ' +
+      '(runbook: favorites-and-theme-migrations.md в корне репозитория, раздел 1; ' +
+      'замена функции начинается с DROP FUNCTION). ' +
       'Пустой результат намеренно не подставляется: это сбой схемы, а не «избранных нет».'
     )
   }
