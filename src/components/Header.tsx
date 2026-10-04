@@ -4,7 +4,7 @@ export function Header() {
   return (
     <header className="header">
       <Link to="/" className="header__logo">
-        <img src="/favicon/favicon-96x96.png" alt="Рпл" className="header__logo-img" />
+        <img loading="lazy" decoding="async" src="/favicon/favicon-96x96.png" alt="Рпл" className="header__logo-img" />
         <span>Рпл Прогнозы</span>
       </Link>
     </header>

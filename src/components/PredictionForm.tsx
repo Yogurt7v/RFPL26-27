@@ -152,12 +152,12 @@ export function PredictionForm({
 
           <div className="check__saved-teams">
             <div className="check__saved-team-info">
-              {home && <img src={home.logo} alt="" className="check__logo" />}
+              {home && <img loading="lazy" decoding="async" src={home.logo} alt="" className="check__logo" />}
               <span className="check__saved-team-name">{homeTeam}</span>
             </div>
             <span className="check__saved-vs"></span>
             <div className="check__saved-team-info">
-              {away && <img src={away.logo} alt="" className="check__logo" />}
+              {away && <img loading="lazy" decoding="async" src={away.logo} alt="" className="check__logo" />}
               <span className="check__saved-team-name">{awayTeam}</span>
             </div>
 
@@ -285,13 +285,13 @@ export function PredictionForm({
       <div className="check__match">
         <div className="check__teams">
           <div className="check__team">
-            {home && <img src={home.logo} alt="" className="check__logo" />}
+            {home && <img loading="lazy" decoding="async" src={home.logo} alt="" className="check__logo" />}
             <span>{homeTeam}</span>
           </div>
           <span className="check__vs">vs</span>
           <div className="check__team check__team--right">
             <span>{awayTeam}</span>
-            {away && <img src={away.logo} alt="" className="check__logo" />}
+            {away && <img loading="lazy" decoding="async" src={away.logo} alt="" className="check__logo" />}
           </div>
         </div>
       </div>

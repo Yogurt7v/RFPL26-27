@@ -71,10 +71,10 @@ export function MatchCard({
       {hasPredicted && <div className="match-card__predicted">✓</div>}
 
       {home?.logoLarge && (
-        <img className="match-card__watermark match-card__watermark--home" src={home.logoLarge} alt="" />
+        <img loading="lazy" decoding="async" className="match-card__watermark match-card__watermark--home" src={home.logoLarge} alt="" />
       )}
       {away?.logoLarge && (
-        <img className="match-card__watermark match-card__watermark--away" src={away.logoLarge} alt="" />
+        <img loading="lazy" decoding="async" className="match-card__watermark match-card__watermark--away" src={away.logoLarge} alt="" />
       )}
 
       {onFavoriteToggle && (

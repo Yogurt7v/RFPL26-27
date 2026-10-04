@@ -112,6 +112,8 @@ export function StandingsTable() {
                     <span className="standings-table__team-name">
                       {team && (
                         <img
+                          loading="lazy"
+                          decoding="async"
                           src={team.logo}
                           alt={row.teamName}
                           className="standings-table__logo"

@@ -113,11 +113,11 @@ export function PredictionResults({ userId }: PredictionResultsProps) {
               <GlassCard>
                 <div className="prediction-results__item-top">
                   <div className="prediction-results__item-teams">
-                    {home && <img src={home.logo} alt="" className="prediction-results__item-logo" />}
+                    {home && <img loading="lazy" decoding="async" src={home.logo} alt="" className="prediction-results__item-logo" />}
                     <span className="prediction-results__item-team">{pred.homeTeam}</span>
                     <span className="prediction-results__item-vs">vs</span>
                     <span className="prediction-results__item-team">{pred.awayTeam}</span>
-                    {away && <img src={away.logo} alt="" className="prediction-results__item-logo" />}
+                    {away && <img loading="lazy" decoding="async" src={away.logo} alt="" className="prediction-results__item-logo" />}
                   </div>
                   <span className="prediction-results__item-date">{formatDate(pred.matchDate, 'short')}</span>
                 </div>
