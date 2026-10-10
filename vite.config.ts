@@ -15,7 +15,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'prompt',
-      includeAssets: ['favicon.ico', 'favicon/*.png'],
+      includeAssets: ['favicon.ico', 'favicon/*.png', 'icons/teams/**/*.png'],
       manifest: {
         name: 'РПЛ Прогнозы 2026/2027',
         short_name: 'РПЛ Прогнозы',

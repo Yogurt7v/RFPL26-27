@@ -233,6 +233,8 @@ export function MatchList({ onPredict }: MatchListProps) {
     const result = Array.from(roundMap.values())
     for (const group of result) {
       group.days.sort((a, b) => a.dateKey.localeCompare(b.dateKey))
+      // Сортируем матчи внутри дня по времени начала (time в формате HH:mm, поэтому строковое сравнение = хронологическое)
+      for (const day of group.days) day.matches.sort((a, b) => a.time.localeCompare(b.time))
     }
 
     return result
