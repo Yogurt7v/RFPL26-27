@@ -27,25 +27,39 @@ function teamName(id) {
 
 // ── HTML helpers ───────────────────────────────────────────────────────
 
+// Москва = UTC+3 круглый год (переход на летнее время отменён в 2014),
+// поэтому календарные даты берём из сдвинутого UTC. Локальные часы сервера
+// на Vercel — это UTC, и в первые 3 часа после полуночи МСК «сегодня» там
+// ещё вчера: матч стартующего дня уезжал бы на сутки назад.
+const MOSCOW_OFFSET_MS = 3 * 60 * 60 * 1000
+// Сезон стартует в июле: июль–декабрь относятся к году старта,
+// январь–июнь — к следующему году.
+const SEASON_START_MONTH = 7
+
 function parseDate(dateStr) {
-  const today = new Date()
-  const day = today.getDate().toString().padStart(2, '0')
-  const month = (today.getMonth() + 1).toString().padStart(2, '0')
-  const year = today.getFullYear()
+  const moscowNow = new Date(Date.now() + MOSCOW_OFFSET_MS)
+  const day = moscowNow.getUTCDate().toString().padStart(2, '0')
+  const month = (moscowNow.getUTCMonth() + 1).toString().padStart(2, '0')
 
   if (!dateStr || !dateStr.includes('.')) {
-    return `${year}-${month}-${day}`
+    return `${moscowNow.getUTCFullYear()}-${month}-${day}`
   }
 
   const [d, m] = dateStr.split('.')
   const monthNum = parseInt(m)
-  const yearNum = monthNum >= 7 && monthNum <= 12 ? 2026 : 2027
+  // Год старта сезона выводим из московской даты, а не хардкодим пару
+  // 2026/2027: та же формула остаётся верной на сезоне 2027/28 без правок.
+  const seasonStartYear =
+    moscowNow.getUTCMonth() + 1 < SEASON_START_MONTH
+      ? moscowNow.getUTCFullYear() - 1
+      : moscowNow.getUTCFullYear()
+  const yearNum = monthNum >= SEASON_START_MONTH ? seasonStartYear : seasonStartYear + 1
   return `${yearNum}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
 }
 
 // ── Parsers (ported from src/api/matches.ts, live.ts, standings.ts) ──
 
-function parseGameBlock(block, roundNumber, deltaMs = 0) {
+function parseGameBlock(block, roundNumber, deltaMs = null) {
   const htIdMatch = block.match(/dt-ht="(\d+)"/)
   const atIdMatch = block.match(/dt-at="(\d+)"/)
   if (!htIdMatch || !atIdMatch) return null
@@ -101,28 +115,31 @@ function parseGameBlock(block, roundNumber, deltaMs = 0) {
     }
   }
 
-  // Без startDate время берём из statusText. Он рендерится под гео IP
-  // запрашивающего (Vercel из США → −7/−8ч от Москвы), поэтому компенсируем
-  // сдвиг deltaMs, вычисленный по стартовым блокам страницы (см. ниже).
-  let matchDate
-  if (startDate) {
-    matchDate = startDate
-  } else {
-    const naiveMs = new Date(`${date}T${time}:00+03:00`).getTime()
-    matchDate = Number.isFinite(naiveMs)
-      ? new Date(naiveMs + deltaMs).toISOString()
-      : `${date}T${time}:00+03:00`
-  }
-
-  return {
+  // Время матча пишем только когда оно достоверно: либо абсолютное из
+  // ld+json startDate, либо statusText, откалиброванный по чужому блоку.
+  // Без калибровки (deltaMs === null) statusText отдаёт время по гео-IP
+  // запрашивающего, поэтому match_date не проставляем вовсе — ключ
+  // отсутствует, upsert не трогает колонку, и уже верное время из БД
+  // не перетирается худшим.
+  const match = {
     home_team: home,
     away_team: away,
-    match_date: matchDate,
     status,
     home_score: homeScore ?? null,
     away_score: awayScore ?? null,
     round: roundNumber,
   }
+
+  if (startDate) {
+    match.match_date = startDate
+  } else if (deltaMs !== null) {
+    const naiveMs = new Date(`${date}T${time}:00+03:00`).getTime()
+    match.match_date = Number.isFinite(naiveMs)
+      ? new Date(naiveMs + deltaMs).toISOString()
+      : `${date}T${time}:00+03:00`
+  }
+
+  return match
 }
 
 const TIME_RE = /^\d{1,2}:\d{2}$/
@@ -131,7 +148,9 @@ function computeTzDeltaMs(html) {
   // Самокалибровка таймзоны: реальное время (startDate) минус сырое время
   // (statusText как +03) даёт сдвиг, под который рендерит страницу IP-гео.
   // Достаточно одного стартового блока — сдвиг один на всю страницу.
-  let deltaMs = 0
+  // Если подходящего блока нет, возвращаем null, а не 0: нулевой сдвиг
+  // неотличим от «калибровка прошла и IP в Москве» и молча записывал бы
+  // время по гео запросившего (с сервера США 14:00 МСК уехало бы в 07:00).
   const sections = html.split(/(?=<div class="cmp_stg_ttl">)/)
 
   for (const section of sections) {
@@ -156,7 +175,7 @@ function computeTzDeltaMs(html) {
     }
   }
 
-  return deltaMs
+  return null
 }
 
 function parseMatchesFromHTML(html, deltaMs) {
@@ -181,6 +200,8 @@ function parseMatchesFromHTML(html, deltaMs) {
     }
   }
 
+  // undefined — сдвиг не передан, считаем его по этой же странице;
+  // явный null — калибровка недоступна, время не угадываем.
   if (deltaMs === undefined) deltaMs = computeTzDeltaMs(html)
 
   for (const { block, roundNumber } of rawBlocks) {
@@ -442,6 +463,9 @@ export default async function handler(req, res) {
     // Таймзона рендера одна для всех страниц сайта с одного IP; результаты
     // ld+json не содержат, поэтому передаём им сдвиг, посчитанный по расписанию.
     const tzDeltaMs = computeTzDeltaMs(scheduleHtml ?? '')
+    if (tzDeltaMs === null) {
+      log.push('WARNING: калибровка таймзоны недоступна — время матчей без ld+json не обновляется (прежние значения в БД сохраняются)')
+    }
     const resultMatches = resultsHtml ? parseMatchesFromHTML(resultsHtml, tzDeltaMs) : []
     const liveScores = liveHtml ? parseLiveScoresFromHTML(liveHtml) : []
     log.push(`Parsed ${scheduleMatches.length} scheduled, ${resultMatches.length} finished, ${liveScores.length} live`)
@@ -590,14 +614,25 @@ export default async function handler(req, res) {
       const t = d ? new Date(d).getTime() : NaN
       return Number.isFinite(t) ? t : ''
     }
+    // stadium_name парсер не отдаёт (всегда ''), а в БД он заполнен — оставлять
+    // его в отпечатке нельзя, иначе каждая такая строка вечно считается
+    // изменённой и переписывается на каждом прогоне.
     const matchFingerprint = (m) =>
-      `${m.home_score ?? ''}|${m.away_score ?? ''}|${m.status}|${dateEpoch(m.match_date)}|${m.stadium_name ?? ''}`
+      `${m.home_score ?? ''}|${m.away_score ?? ''}|${m.status}|${dateEpoch(m.match_date)}`
 
     // ── 5. Upsert only matches that actually changed ──
     const changedMatches = []
     for (const m of allMatches) {
       const stored = existingMap.get(`${m.round}|${m.home_team}|${m.away_team}`)
-      if (!stored || matchFingerprint(stored) !== matchFingerprint(m)) {
+      if (!stored) {
+        changedMatches.push(m)
+        continue
+      }
+      // Не вычисленное время (нет ld+json и нет калибровки) не считаем
+      // изменением: подставляем сохранённое в БД, чтобы сравнение решало
+      // только про счёт и статус — иначе строка переписывалась бы вечно.
+      const comparable = m.match_date === undefined ? { ...m, match_date: stored.match_date } : m
+      if (matchFingerprint(stored) !== matchFingerprint(comparable)) {
         changedMatches.push(m)
       }
     }
