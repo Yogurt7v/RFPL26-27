@@ -6,7 +6,6 @@ import { visualizer } from 'rollup-plugin-visualizer'
 export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(
-      process.env.VITE_APP_VERSION ||
       process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ||
       'dev'
     ),

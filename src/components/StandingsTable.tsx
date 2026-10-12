@@ -64,7 +64,7 @@ export function StandingsTable() {
     )
   }
 
-  if (error && standings.length === 0) {
+  if (!error && standings.length === 0) {
     return <div className="standings-table error-fallback">
       {error ? 'Ошибка загрузки данных' : 'Не удалось загрузить турнирную таблицу'}
     </div>

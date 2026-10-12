@@ -219,8 +219,6 @@ export function SettingsPage() {
         </div>
       </div>
 
-      {user && <PredictionResults userId={user.id} />}
-
       <div className="settings__version">
         Версия {APP_VERSION}
         <button
@@ -243,6 +241,9 @@ export function SettingsPage() {
           </div>
         )}
       </div>
+
+      {user && <PredictionResults userId={user.id} />}
+
     </div>
   )
 }
