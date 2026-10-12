@@ -5,6 +5,8 @@ import { useAuth } from '../hooks/useAuth'
 import { getSecurityQuestion, setSecurityQuestion, SECURITY_QUESTIONS } from '../api/auth'
 import { LogoutIcon } from '../components/Icons'
 import { PredictionResults } from '../components/PredictionResults'
+import { checkForUpdate } from '../hooks/usePWAUpdate'
+import { APP_VERSION } from '../config'
 
 const FONT_SIZE_LABELS: Record<number, string> = {
   1: 'Очень маленький',
@@ -35,6 +37,9 @@ export function SettingsPage() {
   const [showQuestionForm, setShowQuestionForm] = useState(false)
   const [showSecurity, setShowSecurity] = useState(false)
   const [questionMsg, setQuestionMsg] = useState<string | null>(null)
+  const [updateMsg, setUpdateMsg] = useState<string | null>(null)
+  const [updateFailed, setUpdateFailed] = useState(false)
+  const [checkingUpdate, setCheckingUpdate] = useState(false)
 
   const { data: questionSet = false } = useQuery({
     queryKey: ['security-question', user?.username],
@@ -65,6 +70,30 @@ export function SettingsPage() {
       setQuestionMsg('Ошибка сохранения')
     }
     setTimeout(() => setQuestionMsg(null), 3000)
+  }
+
+  // Ручная проверка обновлений по кнопке под версией.
+  //
+  // checkForUpdate() намеренно молчит: requestUpdate() глотает сетевые ошибки
+  // и выходит тихо, если service worker ещё не зарегистрирован. Никакого
+  // «найдена новая версия / не найдена» из неё не придёт — найденное
+  // показывает баннер usePWAUpdate.
+  //
+  // Поэтому признаём честно ровно две ситуации: устройство офлайн или браузер
+  // вообще не умеет service worker. В обоих случаях похвастаться нечем, и
+  // честное «Проверка не удалась» полезнее безликого «Проверено».
+  const handleCheckUpdate = async () => {
+    setCheckingUpdate(true)
+    await checkForUpdate()
+    setCheckingUpdate(false)
+
+    const failed = !navigator.onLine || !('serviceWorker' in navigator)
+    setUpdateFailed(failed)
+    setUpdateMsg(failed ? 'Проверка не удалась' : 'Проверено')
+    setTimeout(() => {
+      setUpdateMsg(null)
+      setUpdateFailed(false)
+    }, 3000)
   }
 
   return (
@@ -193,7 +222,26 @@ export function SettingsPage() {
       {user && <PredictionResults userId={user.id} />}
 
       <div className="settings__version">
-        Версия 1.2.2
+        Версия {APP_VERSION}
+        <button
+          type="button"
+          className="btn btn--secondary settings__version-check"
+          onClick={handleCheckUpdate}
+          disabled={checkingUpdate}
+        >
+          Проверить обновления
+        </button>
+        {updateMsg && (
+          <div
+            className={
+              updateFailed
+                ? 'settings__version-note settings__version-note--error'
+                : 'settings__version-note'
+            }
+          >
+            {updateMsg}
+          </div>
+        )}
       </div>
     </div>
   )

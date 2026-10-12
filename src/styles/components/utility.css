@@ -63,6 +63,31 @@
   opacity: 0.6;
 }
 
+/* Кнопка ручной проверки обновлений — диагностическая, а не основное
+   действие, поэтому вторичная по весу и унаследовала приглушённую opacity
+   всего блока версии. Показывается только как точка входа: узнать, доехал ли
+   новый билд, иначе нечем. */
+.settings__version-check {
+  /* display: flex вместо унаследованного inline-flex — иначе кнопка встала бы
+     в одну строку с текстом версии, а margin: auto не отцентровал бы её.
+     width: fit-content + auto-отступы центрируют блок по ширине содержимого. */
+  display: flex;
+  width: fit-content;
+  margin: var(--spacing-xs) auto 0;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.settings__version-note {
+  margin-top: var(--spacing-xs);
+  color: var(--color-success);
+}
+
+.settings__version-note--error {
+  color: var(--color-error);
+}
+
 /* Update Banner */
 .update-banner__backdrop {
   position: fixed;
