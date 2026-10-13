@@ -29,6 +29,7 @@ export function useAutoSync() {
     staleTime: 5 * 60 * 1000,
     initialData: getCachedSchedule,
     placeholderData: keepPreviousData,
+    initialDataUpdatedAt: 0
   })
 
   const isMatchDay = scheduleMatches.some(m => m.date === moscowDateStr())

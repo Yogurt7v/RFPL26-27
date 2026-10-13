@@ -15,9 +15,10 @@ export function useLiveMatches(
   const scheduleQuery = useQuery({
     queryKey: ['schedule'],
     queryFn: getSchedule,
-    staleTime: 24 * 60 * 60 * 1000,
+    staleTime:  5 * 60 * 1000,
     initialData: getCachedSchedule,
     placeholderData: keepPreviousData,
+    initialDataUpdatedAt: 0
   })
 
   const resultsQuery = useQuery({
@@ -32,6 +33,7 @@ export function useLiveMatches(
     retry: 1,
     initialData: getCachedResults,
     placeholderData: keepPreviousData,
+    initialDataUpdatedAt: 0
   })
 
   const matches = useMemo<Match[]>(() => {

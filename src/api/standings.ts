@@ -59,6 +59,6 @@ export async function getStandings(): Promise<Standing[]> {
       return stale
     }
 
-    throw new Error('Error fetching standings: network error and no cached data')
+    throw new Error('Error fetching standings: network error and no cached data', {cause: err})
   }
 }

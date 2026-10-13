@@ -1,8 +1,3 @@
-export const SCORING = {
-  EXACT_SCORE: 5,
-  OUTCOME: 3,
-} as const
-
 export type Outcome = '1' | 'X' | '2'
 
 export interface Prediction {
@@ -11,67 +6,6 @@ export interface Prediction {
   outcome?: Outcome | null
   homeGoalsThreshold?: number | null
   awayGoalsThreshold?: number | null
-}
-
-export interface MatchResult {
-  homeScore: number
-  awayScore: number
-}
-
-export function calculatePoints(
-  prediction: Prediction,
-  result: MatchResult
-): number {
-  let points = 0
-
-  const actualOutcome: Outcome =
-    result.homeScore > result.awayScore
-      ? '1'
-      : result.homeScore === result.awayScore
-        ? 'X'
-        : '2'
-
-  const hasScore =
-    prediction.predictedHomeScore != null && prediction.predictedAwayScore != null
-
-  const exactMatch = hasScore &&
-    prediction.predictedHomeScore === result.homeScore &&
-    prediction.predictedAwayScore === result.awayScore
-
-  if (exactMatch) {
-    points = SCORING.EXACT_SCORE + SCORING.OUTCOME
-  } else {
-    if (hasScore) {
-      const home = prediction.predictedHomeScore
-      const away = prediction.predictedAwayScore
-      if (home == null || away == null) return -1
-      const predictedOutcome: Outcome =
-        home > away
-          ? '1'
-          : home === away
-            ? 'X'
-            : '2'
-
-      if (predictedOutcome === actualOutcome) {
-        points += SCORING.OUTCOME
-      }
-    } else if (prediction.outcome != null) {
-      if (prediction.outcome === actualOutcome) {
-        points += SCORING.OUTCOME
-      }
-    }
-
-    if (prediction.homeGoalsThreshold != null && result.homeScore >= prediction.homeGoalsThreshold) {
-      points += prediction.homeGoalsThreshold
-    }
-
-    if (prediction.awayGoalsThreshold != null && result.awayScore >= prediction.awayGoalsThreshold) {
-      points += prediction.awayGoalsThreshold
-    }
-  }
-
-  if (points === 0) return -1
-  return points
 }
 
 export function validatePrediction(prediction: Prediction): string[] {

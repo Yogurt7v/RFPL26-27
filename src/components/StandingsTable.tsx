@@ -11,6 +11,7 @@ export function StandingsTable() {
     retry: 1,
     initialData: getCachedStandings,
     placeholderData: keepPreviousData,
+    initialDataUpdatedAt: 0
   })
 
   if (isLoading) {
@@ -64,9 +65,9 @@ export function StandingsTable() {
     )
   }
 
-  if (!error && standings.length === 0) {
+  if (error) {
     return <div className="standings-table error-fallback">
-      {error ? 'Ошибка загрузки данных' : 'Не удалось загрузить турнирную таблицу'}
+      'Ошибка загрузки данных'
     </div>
   }
 

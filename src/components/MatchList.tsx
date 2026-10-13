@@ -76,10 +76,10 @@ interface RoundGroup {
 }
 
 function scheduleToMatch(m: ScheduleEntry): DisplayMatch {
-  return { 
-    ...m, 
-    homeScore: undefined, 
-    awayScore: undefined, 
+  return {
+    ...m,
+    homeScore: undefined,
+    awayScore: undefined,
     status: 'SCHEDULED'
   }
 }
@@ -124,6 +124,7 @@ export function MatchList({ onPredict }: MatchListProps) {
     staleTime: 5 * 60 * 1000,
     initialData: getCachedSchedule,
     placeholderData: keepPreviousData,
+    initialDataUpdatedAt: 0
   })
 
   // Определяем начальный тур
@@ -178,6 +179,7 @@ export function MatchList({ onPredict }: MatchListProps) {
     retry: 1,
     initialData: user?.id ? () => getCachedPredictedKeys(user.id) : undefined,
     placeholderData: keepPreviousData,
+    initialDataUpdatedAt: 0
   })
 
   const { matches: liveMatches } = useLiveMatches(selectedRound, selectedTeam)

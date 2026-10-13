@@ -12,14 +12,8 @@ export function getCachedPredictedKeys(userId: string): Set<string> | undefined 
   return arr ? new Set(arr) : undefined
 }
 
-function predictionDetailCacheKey(userId: string, round: number, homeTeam: string, awayTeam: string): string {
+export function predictionDetailCacheKey(userId: string, round: number, homeTeam: string, awayTeam: string): string {
   return `prediction_detail:${userId}:${round}:${homeTeam}:${awayTeam}`
-}
-
-export function getCachedPredictionDetail(
-  userId: string, round: number, homeTeam: string, awayTeam: string
-): PredictionData | null {
-  return cacheGet<PredictionData>(predictionDetailCacheKey(userId, round, homeTeam, awayTeam))
 }
 
 function otherPredictionsCacheKey(matchId: number, userId: string): string {
@@ -33,11 +27,7 @@ export function getCachedMatchOtherPredictions(
 }
 
 export function getCachedUserPredictions(userId: string): UserPrediction[] | undefined {
-  return cacheGet<UserPrediction[]>('user_predictions_' + userId) ?? undefined
-}
-
-function isNoRowsError(error: { code?: string } | null): boolean {
-  return !!error && error.code === 'PGRST116'
+  return cacheGet<UserPrediction[]>(`user_predictions_${userId}`) ?? undefined
 }
 
 function logQueryError(context: string, error: { message?: string } | null): void {
@@ -80,10 +70,13 @@ export async function getPredictionForMatch(
   awayTeam: string,
   round: number
 ): Promise<PredictionData | null> {
-  const { data, error } = await withRetry(() =>
-    supabase
-      .from('predictions')
-      .select(`
+
+  try {
+
+    const { data, error } = await withRetry(() =>
+      supabase
+        .from('predictions')
+        .select(`
         predicted_home_score,
         predicted_away_score,
         outcome,
@@ -92,50 +85,43 @@ export async function getPredictionForMatch(
         points_earned,
         matches!inner (id, home_score, away_score)
       `)
-      .eq('user_id', userId)
-      .eq('matches.home_team', homeTeam)
-      .eq('matches.away_team', awayTeam)
-      .eq('matches.round', round)
-      .maybeSingle()
-  )
+        .eq('user_id', userId)
+        .eq('matches.home_team', homeTeam)
+        .eq('matches.away_team', awayTeam)
+        .eq('matches.round', round)
+        .maybeSingle()
+    )
 
-  logQueryError('getPredictionForMatch', error)
-  if (!data) return null
+    logQueryError('getPredictionForMatch', error)
+    if (error) throw new Error("Ошибка загрузки данных")
+    if (!data) return null
 
-  const match = data.matches as unknown as Record<string, unknown> | null
+    const match = data.matches as unknown as Record<string, unknown> | null
 
-  const result: PredictionData = {
-    matchId: match?.id as number | undefined,
-    predictedHomeScore: data.predicted_home_score as number | null,
-    predictedAwayScore: data.predicted_away_score as number | null,
-    outcome: data.outcome as string | null,
-    homeGoalsThreshold: data.home_goals_threshold as number | null,
-    awayGoalsThreshold: data.away_goals_threshold as number | null,
-    actualHomeScore: (match?.home_score as number) ?? null,
-    actualAwayScore: (match?.away_score as number) ?? null,
-    pointsEarned: (data.points_earned as number) || 0,
+    const result: PredictionData = {
+      matchId: match?.id as number | undefined,
+      predictedHomeScore: data.predicted_home_score as number | null,
+      predictedAwayScore: data.predicted_away_score as number | null,
+      outcome: data.outcome as string | null,
+      homeGoalsThreshold: data.home_goals_threshold as number | null,
+      awayGoalsThreshold: data.away_goals_threshold as number | null,
+      actualHomeScore: (match?.home_score as number) ?? null,
+      actualAwayScore: (match?.away_score as number) ?? null,
+      pointsEarned: (data.points_earned as number) || 0,
+    }
+
+    cacheSet(predictionDetailCacheKey(userId, round, homeTeam, awayTeam), result, PREDICTION_DETAIL_CACHE_TTL)
+    clearDataStale(predictionDetailCacheKey(userId, round, homeTeam, awayTeam))
+    return result
+  } catch (err){
+    const stale = cacheGetStale<PredictionData>(predictionDetailCacheKey(userId, round, homeTeam, awayTeam))
+    if (stale) {
+      markDataStale(predictionDetailCacheKey(userId, round, homeTeam, awayTeam))
+      return stale
+    } else {
+      throw err
+    }
   }
-
-  cacheSet(predictionDetailCacheKey(userId, round, homeTeam, awayTeam), result, PREDICTION_DETAIL_CACHE_TTL)
-  return result
-}
-
-export async function findMatchId(homeTeam: string, awayTeam: string, round: number): Promise<number | null> {
-  const { data, error } = await withRetry(() =>
-    supabase
-      .from('matches')
-      .select('id')
-      .eq('home_team', homeTeam)
-      .eq('away_team', awayTeam)
-      .eq('round', round)
-      .single()
-  )
-
-  if (error && !isNoRowsError(error)) {
-    logQueryError('findMatchId', error)
-  }
-
-  return data?.id ?? null
 }
 
 export type SaveResult =
@@ -207,10 +193,12 @@ export async function deletePrediction(
 }
 
 export async function getUserPredictions(userId: string): Promise<UserPrediction[]> {
-  const { data, error } = await withRetry(() =>
-    supabase
-      .from('predictions')
-      .select(`
+  const cacheKey = `user_predictions_${userId}`
+  try {
+    const { data, error } = await withRetry(() =>
+      supabase
+        .from('predictions')
+        .select(`
         id,
         match_id,
         predicted_home_score,
@@ -228,46 +216,46 @@ export async function getUserPredictions(userId: string): Promise<UserPrediction
           away_score
         )
       `)
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-  )
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+    )
 
-  const cacheKey = 'user_predictions_' + userId
+    if (error) {
+      console.error('Error fetching predictions:', error)
+      throw new Error("Ошибка загрузки данных")
+    }
 
-  if (error) {
-    console.error('Error fetching predictions:', error)
+    const result = data.map((row: Record<string, unknown>) => {
+      const match = row.matches as Record<string, unknown> | null
+      return {
+        id: row.id as number,
+        matchId: row.match_id as number,
+        homeTeam: (match?.home_team as string) || '',
+        awayTeam: (match?.away_team as string) || '',
+        matchDate: (match?.match_date as string) || '',
+        matchStatus: (match?.status as string) || '',
+        predictedHomeScore: row.predicted_home_score as number | null,
+        predictedAwayScore: row.predicted_away_score as number | null,
+        outcome: row.outcome as string | null,
+        homeGoalsThreshold: row.home_goals_threshold as number | null,
+        awayGoalsThreshold: row.away_goals_threshold as number | null,
+        actualHomeScore: (match?.home_score as number) ?? null,
+        actualAwayScore: (match?.away_score as number) ?? null,
+        pointsEarned: (row.points_earned as number) || 0,
+      }
+    })
 
+    cacheSet(cacheKey, result, USER_PREDICTIONS_CACHE_TTL)
+    clearDataStale(cacheKey)
+    return result
+  } catch (err) {
     const stale = cacheGetStale<UserPrediction[]>(cacheKey)
     if (stale) {
       markDataStale(cacheKey)
       return stale
     }
-    return []
+    throw (err)
   }
-
-  const result = data.map((row: Record<string, unknown>) => {
-    const match = row.matches as Record<string, unknown> | null
-    return {
-      id: row.id as number,
-      matchId: row.match_id as number,
-      homeTeam: (match?.home_team as string) || '',
-      awayTeam: (match?.away_team as string) || '',
-      matchDate: (match?.match_date as string) || '',
-      matchStatus: (match?.status as string) || '',
-      predictedHomeScore: row.predicted_home_score as number | null,
-      predictedAwayScore: row.predicted_away_score as number | null,
-      outcome: row.outcome as string | null,
-      homeGoalsThreshold: row.home_goals_threshold as number | null,
-      awayGoalsThreshold: row.away_goals_threshold as number | null,
-      actualHomeScore: (match?.home_score as number) ?? null,
-      actualAwayScore: (match?.away_score as number) ?? null,
-      pointsEarned: (row.points_earned as number) || 0,
-    }
-  })
-
-  cacheSet(cacheKey, result, USER_PREDICTIONS_CACHE_TTL)
-  clearDataStale(cacheKey)
-  return result
 }
 
 export interface OtherPrediction {
@@ -285,33 +273,45 @@ export interface MatchPredictionsInfo {
   usernames: string[]
   predictions: OtherPrediction[]
 }
+export interface dataUserPredictedMatchKeys{
+      matches: {
+          round: number;
+          home_team: string;
+          away_team: string;
+      };
+}
 
 export async function getUserPredictedMatchKeys(userId: string): Promise<Set<string>> {
-  const { data, error } = await withRetry(() =>
-    supabase
-      .from('predictions')
-      .select('matches!inner(round, home_team, away_team)')
-      .eq('user_id', userId)
-  )
-
   const cacheKey = 'predicted_keys_' + userId
+  try {
+    const { data, error } = await withRetry(() =>
+      supabase
+        .from('predictions')
+        .select('matches!inner(round, home_team, away_team)')
+        .eq('user_id', userId)
+    )
 
-  if (error || !data) {
-    logQueryError('getUserPredictedMatchKeys', error)
+
+    if (error) {
+      logQueryError('getUserPredictedMatchKeys', error)
+      throw new Error("Ошибка загрузки данных")
+    }
+
+    const keys = new Set(
+      (data as dataUserPredictedMatchKeys[] | []).map(d => `${d.matches.round}|${d.matches.home_team}|${d.matches.away_team}`)
+    )
+    cacheSet(cacheKey, [...keys], PREDICTED_KEYS_CACHE_TTL)
+    clearDataStale(cacheKey)
+    return keys
+  } catch (err) {
 
     const stale = cacheGetStale<string[]>(cacheKey)
     if (stale) {
       markDataStale(cacheKey)
       return new Set(stale)
     }
-    return new Set()
+    throw err
   }
-  const keys = new Set(
-    (data as any[]).map(d => `${d.matches.round}|${d.matches.home_team}|${d.matches.away_team}`)
-  )
-  cacheSet(cacheKey, [...keys], PREDICTED_KEYS_CACHE_TTL)
-  clearDataStale(cacheKey)
-  return keys
 }
 
 export async function getMatchOtherPredictions(

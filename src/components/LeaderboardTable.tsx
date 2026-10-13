@@ -14,6 +14,7 @@ export function LeaderboardTable({ currentUserId }: LeaderboardTableProps) {
     retry: 1,
     initialData: getCachedLeaderboard,
     placeholderData: keepPreviousData,
+    initialDataUpdatedAt: 0
   })
 
   if (isLoading) {
@@ -54,10 +55,10 @@ export function LeaderboardTable({ currentUserId }: LeaderboardTableProps) {
     )
   }
 
-  if (error && entries.length === 0) {
+  if (error) {
     return (
       <div className="leaderboard-table error-fallback">
-        {error ? 'Ошибка загрузки данных' : 'Пока нет данных для таблицы лидеров'}
+        Ошибка загрузки данных
       </div>
     )
   }

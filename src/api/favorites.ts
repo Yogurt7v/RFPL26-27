@@ -52,12 +52,6 @@ export interface FavoriteUser {
   userId: string
 }
 
-export interface FavoriteRow {
-  matchId: string
-  username: string
-  userId: string
-}
-
 export interface Starlet {
   letter: string
   username: string
@@ -123,31 +117,13 @@ export async function getMatchFavorites(matchId: string): Promise<FavoriteUser[]
     })
   )
   logQueryError('getMatchFavorites', error)
-  if (error) return []
+  if (error) {
+    throw new Error('Ошибка загрузки данных')
+  }
   return ((data as { username: string; user_id: string }[]) ?? []).map(d => ({
     username: d.username,
     userId: d.user_id,
   }))
-}
-
-export async function getAllFavoritesWithUsers(): Promise<FavoriteRow[]> {
-  const { data, error } = await withRetry(() =>
-    supabase.rpc('get_all_favorites_with_users')
-  )
-  logQueryError('getAllFavoritesWithUsers', error)
-  if (error) return []
-  return ((data as { match_id: string; username: string; user_id: string }[]) ?? []).map(d => ({
-    matchId: d.match_id,
-    username: d.username,
-    userId: d.user_id,
-  }))
-}
-
-export async function getTotalUsersCount(): Promise<number> {
-  const { data, error } = await withRetry(() => supabase.rpc('get_total_users_count'))
-  logQueryError('getTotalUsersCount', error)
-  if (error) return 0
-  return (data as number) ?? 0
 }
 
 export interface FavoritesOverview {

@@ -2,7 +2,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { PredictionForm, type PredictionFormData } from '../components/PredictionForm'
-import { savePrediction, deletePrediction, getPredictionForMatch, getMatchOtherPredictions, type OtherPrediction, type SaveResult } from '../api/predictions'
+import { savePrediction, deletePrediction, getPredictionForMatch, getMatchOtherPredictions, type OtherPrediction, type SaveResult, predictionDetailCacheKey } from '../api/predictions'
+import { DataStatusChip } from '../components/DataStatusChip'
 import { getResults, getCachedResults, getSchedule, getCachedSchedule, type ScheduleEntry, type ResultEntry } from '../api/matches'
 import { getStandings, type Standing } from '../api/standings'
 import { getTeamLastResults } from '../lib/form'
@@ -38,11 +39,12 @@ export function PredictPage() {
     staleTime: 5 * 60 * 1000,
     initialData: getCachedSchedule,
     placeholderData: keepPreviousData,
+    initialDataUpdatedAt: 0
   })
 
   const match = matches.find((m: ScheduleEntry) => m.id === matchId)
 
-  const { data: existingPrediction, isLoading: isLoadingPrediction } = useQuery({
+  const { data: existingPrediction, isLoading: isLoadingPrediction, error } = useQuery({
     queryKey: ['predictions', 'detail', user?.id, match?.homeTeam, match?.awayTeam, match?.round],
     queryFn: () => getPredictionForMatch(user!.id, match!.homeTeam, match!.awayTeam, match!.round),
     enabled: !!user && !!match,
@@ -63,9 +65,10 @@ export function PredictPage() {
   const { data: allResults = [], isLoading: isLoadingResults } = useQuery({
     queryKey: ['matches', 'results'],
     queryFn: getResults,
-    staleTime: 15 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
     initialData: getCachedResults,
     placeholderData: keepPreviousData,
+    initialDataUpdatedAt: 0
   })
 
   const { data: standings = [] } = useQuery({
@@ -245,6 +248,12 @@ export function PredictPage() {
       </div>
     )
   }
+  if (error) {
+    return (
+    <div className='page'>
+      <div className="prediction-results prediction-results--empty">Ошибка загрузки данных</div>
+    </div>)
+  }
 
   const matchClosed = !isMatchOpen(match)
   const finished = isMatchFinished(match.date, match.time)
@@ -290,14 +299,18 @@ export function PredictPage() {
             <p className="predict-missed__text">Вы не сделали прогноз на этот матч.</p>
           </div>
          )}
-
-          <button
+        <button
             className="btn btn--secondary predict-page__back"
             onClick={goBack}
           >
            Назад к матчам
          </button>
-
+         <DataStatusChip
+           sources={[{
+             queryKey: ['predictions', 'detail', user?.id, match?.homeTeam, match?.awayTeam, match?.round],
+             cacheKey: predictionDetailCacheKey(user!.id, match!.round, match!.homeTeam, match!.awayTeam),
+           }]}
+         />
          {otherCount > 0 && !finished && (
            <div className="predict-others">
              <span className="predict-others__dot" />
@@ -363,6 +376,12 @@ export function PredictPage() {
       >
         Назад к матчам
       </button>
+      <DataStatusChip
+        sources={[{
+          queryKey: ['predictions', 'detail', user?.id, match?.homeTeam, match?.awayTeam, match?.round],
+          cacheKey: predictionDetailCacheKey(user!.id, match!.round, match!.homeTeam, match!.awayTeam),
+        }]}
+      />
       {otherCount > 0 && (
         <div className="predict-others">
           <span className="predict-others__dot" />

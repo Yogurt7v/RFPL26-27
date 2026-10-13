@@ -53,7 +53,6 @@ export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
       markDataStale(LEADERBOARD_CACHE_KEY)
       return stale
     }
-
-    return []
+    throw new Error("Error fetching leaderboard: network error and no cached data", {cause: err})
   }
 }

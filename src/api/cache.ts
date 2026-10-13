@@ -60,14 +60,6 @@ export function cacheGetUpdatedAt(key: string): number | null {
   }
 }
 
-export function cacheRemove(key: string): void {
-  try {
-    localStorage.removeItem(PREFIX + key)
-  } catch {
-    // ignore quota/security errors
-  }
-}
-
 // ── Реестр «отдал просроченный кэш» ───────────────────────────────────
 // Отмечает источники данных, которые вернули кэш вместо свежего ответа
 // (network error / timeout). Используется UI-индикатором (DataStatusChip),

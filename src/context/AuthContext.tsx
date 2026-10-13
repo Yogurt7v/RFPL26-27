@@ -1,9 +1,8 @@
-import { createContext, useState, useEffect, type ReactNode } from 'react'
+import { createContext, useState, type ReactNode } from 'react'
 import { registerUser, verifyUser, type AuthUser } from '../api/auth'
 
 interface AuthContextType {
   user: AuthUser | null
-  isLoading: boolean
   login: (login: string, password: string) => Promise<string | null>
   register: (login: string, password: string) => Promise<string | null>
   logout: () => void
@@ -34,15 +33,7 @@ function saveUser(user: AuthUser | null): void {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    const storedUser = loadUser()
-    setUser(storedUser)
-    setIsLoading(false)
-  }, [])
-
+  const [user, setUser] = useState<AuthUser | null>(loadUser)
   const login = async (login: string, password: string): Promise<string | null> => {
     const { user: authUser, error } = await verifyUser(login, password)
     if (error) return error
@@ -67,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   )

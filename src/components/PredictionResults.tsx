@@ -5,7 +5,7 @@ import { getTeamByName } from '../lib/teams'
 import { formatScore, formatDate } from '../lib/format'
 import { GlassCard } from './GlassCard'
 import { DataStatusChip } from './DataStatusChip'
-
+import { getCachedLeaderboard, getLeaderboard } from '../api/leaderboard'
 function formatGoalsThreshold(pred: UserPrediction): string {
   const parts: string[] = []
   if (pred.homeGoalsThreshold != null) parts.push(`${pred.homeTeam} ≥ ${pred.homeGoalsThreshold}`)
@@ -30,10 +30,21 @@ export function PredictionResults({ userId }: PredictionResultsProps) {
   const { data: predictions = [], isLoading, error } = useQuery({
     queryKey: ['predictions', userId],
     queryFn: () => getUserPredictions(userId),
-    staleTime: 120_000,
+    staleTime: 10 * 60_000,
     retry: 1,
     initialData: () => getCachedUserPredictions(userId),
     placeholderData: keepPreviousData,
+    initialDataUpdatedAt: 0
+  })
+
+  const { data: leaderboard = [] } = useQuery({
+    queryKey: ['leaderboard'],
+    queryFn: getLeaderboard,
+    staleTime: 10 * 60_000,
+    retry: 1,
+    initialData: getCachedLeaderboard,
+    placeholderData: keepPreviousData,
+    initialDataUpdatedAt: 0
   })
 
   if (isLoading) {
@@ -77,8 +88,7 @@ export function PredictionResults({ userId }: PredictionResultsProps) {
   if (predictions.length === 0) {
     return <div className="prediction-results prediction-results--empty">У вас пока нет прогнозов</div>
   }
-
-  const totalPoints = predictions.reduce((sum, p) => sum + p.pointsEarned, 0) + 30
+const myTotal = leaderboard.find(e => e.id === userId)?.totalPoints ?? "-"
 
   return (
     <div className="prediction-results">
@@ -88,7 +98,7 @@ export function PredictionResults({ userId }: PredictionResultsProps) {
       </div>
 
       <div className="prediction-results__total">
-        Всего очков: <strong>{totalPoints}</strong>
+        Всего очков: <strong>{myTotal}</strong>
       </div>
 
       <div className="prediction-results__list">

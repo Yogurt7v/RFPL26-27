@@ -10,7 +10,7 @@ interface FavoriteSheetProps {
 
 export function FavoriteSheet({ matchId, isOpen, onClose }: FavoriteSheetProps) {
   const { user } = useAuth()
-  const { data: users = [], isLoading } = useQuery({
+  const { data: users = [], isLoading, error } = useQuery({
     queryKey: ['favorites', 'match', matchId],
     queryFn: () => getMatchFavorites(matchId),
     enabled: isOpen && !!matchId,
@@ -32,9 +32,11 @@ export function FavoriteSheet({ matchId, isOpen, onClose }: FavoriteSheetProps) 
         <div className="favorite-sheet__body">
           {isLoading ? (
             <p className="favorite-sheet__loading">Загрузка...</p>
+          ) : error ? (
+               <p className="favorite-sheet__loading">Ошибка загрузки данных</p>
           ) : users.length === 0 ? (
             <p className="favorite-sheet__empty">Пока никто не отметил этот матч</p>
-          ) : (
+            ) : (
             users.map(u => (
               <div key={u.userId} className="favorite-sheet__user">
                 <span className="favorite-sheet__starlet">★</span>
