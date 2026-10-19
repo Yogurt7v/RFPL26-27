@@ -37,6 +37,23 @@ interface PredictionFormProps {
 const SCORE_OPTIONS = [0, 1, 2, 3, 4, 5]
 const GOALS_OPTIONS = [2, 3, 4, 5]
 
+/** Исход, который подразумевает конкретный счёт. */
+function outcomeFromScore(home: number, away: number): Outcome {
+  return home > away ? '1' : home === away ? 'X' : '2'
+}
+
+/**
+ * Исход для формы. Пока заполнен точный счёт, он единственный источник
+ * исхода: у старых прогнозов поле outcome могло противоречить счёту или
+ * быть пустым, а начисление очков исходит именно от счёта.
+ */
+function initialOutcome(prediction: PredictionFormData | null | undefined): Outcome | '' {
+  if (prediction?.predictedHomeScore != null && prediction?.predictedAwayScore != null) {
+    return outcomeFromScore(prediction.predictedHomeScore, prediction.predictedAwayScore)
+  }
+  return prediction?.outcome || ''
+}
+
 export function PredictionForm({
   homeTeam,
   awayTeam,
@@ -58,7 +75,7 @@ export function PredictionForm({
 }: PredictionFormProps) {
   const [homeScore, setHomeScore] = useState<number | ''>(initialValues?.predictedHomeScore ?? '')
   const [awayScore, setAwayScore] = useState<number | ''>(initialValues?.predictedAwayScore ?? '')
-  const [outcome, setOutcome] = useState<Outcome | ''>((initialValues?.outcome as Outcome) || '')
+  const [outcome, setOutcome] = useState<Outcome | ''>(initialOutcome(initialValues))
   const [homeGoalsThreshold, setHomeGoalsThreshold] = useState<number | ''>(initialValues?.homeGoalsThreshold ?? '')
   const [awayGoalsThreshold, setAwayGoalsThreshold] = useState<number | ''>(initialValues?.awayGoalsThreshold ?? '')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -72,7 +89,7 @@ export function PredictionForm({
     if (!initialValues) return
     setHomeScore(initialValues.predictedHomeScore ?? '')
     setAwayScore(initialValues.predictedAwayScore ?? '')
-    setOutcome((initialValues.outcome as Outcome) || '')
+    setOutcome(initialOutcome(initialValues))
     setHomeGoalsThreshold(initialValues.homeGoalsThreshold ?? '')
     setAwayGoalsThreshold(initialValues.awayGoalsThreshold ?? '')
   }, [initialSnapshot])
@@ -87,6 +104,38 @@ export function PredictionForm({
     homeGoalsThreshold: homeGoalsThreshold !== '' ? homeGoalsThreshold : null,
     awayGoalsThreshold: awayGoalsThreshold !== '' ? awayGoalsThreshold : null,
   })
+
+  /**
+   * Счёт выставляет исход сам. Пока выбрана хотя бы одна половина, счёт
+   * неполный и его подразумеваемый исход вычислить нельзя — тогда исход
+   * не трогаем (неполный счёт и так не даёт сохранить прогноз).
+   */
+  const handleScoreChange = (side: 'home' | 'away', value: number | '') => {
+    const nextHome = side === 'home' ? value : homeScore
+    const nextAway = side === 'away' ? value : awayScore
+
+    if (side === 'home') setHomeScore(value)
+    else setAwayScore(value)
+
+    if (typeof nextHome === 'number' && typeof nextAway === 'number') {
+      setOutcome(outcomeFromScore(nextHome, nextAway))
+    }
+  }
+
+  /**
+   * Счёт и исход — взаимоисключающие ставки: очки за исход начисляет
+   * что-то одно. Поэтому клик по исходу при заданном счёте означает
+   * «хочу только исход» — счёт сбрасывается. Повторный клик по уже
+   * активной кнопке ничего не меняет.
+   */
+  const handleOutcomeClick = (value: Outcome) => {
+    if (homeScore !== '' && awayScore !== '') {
+      if (outcome === value) return
+      setHomeScore('')
+      setAwayScore('')
+    }
+    setOutcome(outcome === value ? '' : value)
+  }
 
   const handleSubmit = async () => {
     const prediction = buildPrediction()
@@ -324,32 +373,37 @@ export function PredictionForm({
         {/* Outcome toggle */}
         <div className="check__section">
           <div className="check__section-label">Исход</div>
-          <div className="check__outcome-toggle">
-            <button type="button" className={`check__outcome-btn ${outcome === '1' ? 'check__outcome-btn--active' : ''}`} onClick={() => setOutcome(outcome === '1' ? '' : '1')}>
+          <div className="check__outcome-toggle" role="group" aria-label="Прогноз исхода">
+            <button type="button" className={`check__outcome-btn ${outcome === '1' ? 'check__outcome-btn--active' : ''}`} aria-pressed={outcome === '1'} onClick={() => handleOutcomeClick('1')}>
               <span className="check__outcome-main">П1</span>
               <span className="check__outcome-sub">Хозяева</span>
             </button>
-            <button type="button" className={`check__outcome-btn ${outcome === 'X' ? 'check__outcome-btn--active' : ''}`} onClick={() => setOutcome(outcome === 'X' ? '' : 'X')}>
+            <button type="button" className={`check__outcome-btn ${outcome === 'X' ? 'check__outcome-btn--active' : ''}`} aria-pressed={outcome === 'X'} onClick={() => handleOutcomeClick('X')}>
               <span className="check__outcome-main">X</span>
               <span className="check__outcome-sub">Ничья</span>
             </button>
-            <button type="button" className={`check__outcome-btn ${outcome === '2' ? 'check__outcome-btn--active' : ''}`} onClick={() => setOutcome(outcome === '2' ? '' : '2')}>
+            <button type="button" className={`check__outcome-btn ${outcome === '2' ? 'check__outcome-btn--active' : ''}`} aria-pressed={outcome === '2'} onClick={() => handleOutcomeClick('2')}>
               <span className="check__outcome-main">П2</span>
               <span className="check__outcome-sub">Гости</span>
             </button>
           </div>
+          {hasScore && (
+            <div className="check__outcome-hint" aria-live="polite">
+              Исход определён точным счётом
+            </div>
+          )}
         </div>
 
         {/* Score */}
         <div className="check__section">
           <div className="check__section-label">Точный счёт</div>
           <div className="check__score-selects">
-            <select value={homeScore} onChange={e => setHomeScore(e.target.value === '' ? '' : parseInt(e.target.value))} className="check__score-select">
+            <select value={homeScore} onChange={e => handleScoreChange('home', e.target.value === '' ? '' : parseInt(e.target.value))} className="check__score-select">
               <option value="">—</option>
               {SCORE_OPTIONS.map(n => <option key={n} value={n}>{n}</option>)}
             </select>
             <span className="check__score-sep">:</span>
-            <select value={awayScore} onChange={e => setAwayScore(e.target.value === '' ? '' : parseInt(e.target.value))} className="check__score-select">
+            <select value={awayScore} onChange={e => handleScoreChange('away', e.target.value === '' ? '' : parseInt(e.target.value))} className="check__score-select">
               <option value="">—</option>
               {SCORE_OPTIONS.map(n => <option key={n} value={n}>{n}</option>)}
             </select>

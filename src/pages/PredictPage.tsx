@@ -267,6 +267,12 @@ export function PredictPage() {
       <div className="page">
         {initialValues ? (
           <>
+            <DataStatusChip
+              sources={[{
+                queryKey: ['predictions', 'detail', user?.id, match?.homeTeam, match?.awayTeam, match?.round],
+                cacheKey: predictionDetailCacheKey(user!.id, match!.round, match!.homeTeam, match!.awayTeam),
+              }]}
+            />
             <PredictionForm
               homeTeam={match.homeTeam}
               awayTeam={match.awayTeam}
@@ -305,12 +311,7 @@ export function PredictPage() {
           >
            Назад к матчам
          </button>
-         <DataStatusChip
-           sources={[{
-             queryKey: ['predictions', 'detail', user?.id, match?.homeTeam, match?.awayTeam, match?.round],
-             cacheKey: predictionDetailCacheKey(user!.id, match!.round, match!.homeTeam, match!.awayTeam),
-           }]}
-         />
+
          {otherCount > 0 && !finished && (
            <div className="predict-others">
              <span className="predict-others__dot" />
@@ -353,6 +354,12 @@ export function PredictPage() {
 
   return (
     <div className="page">
+      <DataStatusChip
+        sources={[{
+          queryKey: ['predictions', 'detail', user?.id, match?.homeTeam, match?.awayTeam, match?.round],
+          cacheKey: predictionDetailCacheKey(user!.id, match!.round, match!.homeTeam, match!.awayTeam),
+        }]}
+      />
       <PredictionForm
         homeTeam={match.homeTeam}
         awayTeam={match.awayTeam}
@@ -376,12 +383,7 @@ export function PredictPage() {
       >
         Назад к матчам
       </button>
-      <DataStatusChip
-        sources={[{
-          queryKey: ['predictions', 'detail', user?.id, match?.homeTeam, match?.awayTeam, match?.round],
-          cacheKey: predictionDetailCacheKey(user!.id, match!.round, match!.homeTeam, match!.awayTeam),
-        }]}
-      />
+
       {otherCount > 0 && (
         <div className="predict-others">
           <span className="predict-others__dot" />
